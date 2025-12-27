@@ -125,24 +125,21 @@ class ApiService {
       });
   }
 
-  // Existing: getDashboardData
-  getDashboardData(data = {}, callback, header = true) {
-    // 1. Destructure the accid from the data object
-    const { accid } = data;
-
-    return this.postRequest(
-      "/reports/report/dashboard",
-      data, // Empty data or other body data (kept in case backend needs it)
-      header,
-      SERVICES.dashboard,
-      { accid } // 2. Pass accid as a URL query parameter using the 'params' argument
+  getYesterdaySummary(accId, callback) {
+    // Matches: GET ...:8075/usage/v2/summary/yesterday?accId=1
+    return this.getRequest(
+      `/usage/v2/summary/yesterday?accId=${accId}`,
+      null,
+      true,
+      SERVICES.dashboard
     )
       .then((res) => {
         if (callback) callback(res);
+        return res;
       })
       .catch((error) => {
         if (callback) callback({ message: error?.message });
-        callAlert("Error", error?.message);
+        throw error;
       });
   }
   getMapViewData(data = {}, callback, header = true, accid = 1) {

@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import ApiService from "services/ApiService";
 import { useNavigate } from "react-router-dom";
@@ -60,12 +57,10 @@ function Dashboard() {
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
 
   const [summaryData, setSummaryData] = useState({
-    totalDevices: 0,
-    offline: 0,
-    onlineIdle: 0,
-    onlineStopped: 0,
-    onlineMotion: 0,
-    unreachable: 0,
+    total: 0,
+    functional: 0,
+    nonFunctional: 0,
+    notInstalled: 0,
   });
 
   const [alertApiData, setAlertApiData] = useState({ summary: [], data: [] });
@@ -119,51 +114,21 @@ function Dashboard() {
   const fetchDashboardData = useCallback((accountId, isManual = false) => {
     if (isManual) setIsRefreshing(true);
 
-    ApiService.getDashboardData(
-      { accid: accountId },
-      (res) => {
-        if (res?.data?.resultCode === 1 && res?.data?.data?.data) {
-          const apiData = res.data.data.data;
-          const summary = apiData.summary || {};
+    ApiService.getYesterdaySummary(accountId, (res) => {
+      if (res?.data?.resultCode === 1 && res?.data?.data) {
+        const apiData = res.data.data;
 
-          const newSummary = {
-            totalDevices: summary.totalDevices || 0,
-            offline: summary.offline || 0,
-            onlineIdle: summary.onlineIdle || 0,
-            onlineStopped: summary.onlineStopped || 0,
-            onlineMotion: summary.onlineMotion || 0,
-            unreachable: summary.unreachable || 0,
-          };
-          setSummaryData(newSummary);
+        setSummaryData({
+          total: apiData.total || 0,
+          functional: apiData.functional || 0,
+          nonFunctional: apiData.nonFunctional || 0,
+          notInstalled: apiData.notInstalled || 0,
+        });
 
-          const online =
-            newSummary.onlineIdle + newSummary.onlineStopped + newSummary.onlineMotion;
-          const totalWithUnreachable = newSummary.totalDevices + newSummary.unreachable;
-
-          setTotalDevices(totalWithUnreachable);
-          setOnlineDevices(online);
-          setOfflineDevices(newSummary.offline);
-
-          const devicesRaw = apiData.VTS?.available || [];
-          setDevices(
-            devicesRaw.map((item) => ({
-              imei: item.imei || "N/A",
-              name: item.vehnum || item.name || item.imei,
-              status: item.gps === "A" ? "active" : "inactive",
-              ign: item.ign,
-              speed: Number(item.speed) || 0,
-            }))
-          );
-
-          setLastRefreshTime(Date.now());
-          if (isManual) setIsRefreshing(false);
-        } else if (isManual) {
-          setIsRefreshing(false);
-        }
-      },
-      true,
-      1
-    );
+        setLastRefreshTime(Date.now());
+      }
+      if (isManual) setIsRefreshing(false);
+    });
   }, []);
 
   const fetchAccounts = () => {
@@ -372,62 +337,51 @@ function Dashboard() {
 
       <MDBox py={0}>
         {/* Top statistics cards */}
-        {/* <Grid container spacing={3}>
-          <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
+        <Grid container spacing={3}>
+          {/* Total Devices */}
+          <Grid item xs={12} md={6} lg={3}>
             <ComplexStatisticsCard
               color="dark"
               icon={<DevicesIcon style={{ marginTop: "-15px" }} />}
               title="Total Devices"
-              count={summaryData.totalDevices.toLocaleString()}
-              percentage={{ color: "success", label: "Total Active Fleet" }}
+              count={summaryData.total.toLocaleString()}
+              percentage={{ color: "success", label: "Registered in system" }}
             />
           </Grid>
-          <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
+
+          {/* Functional Devices */}
+          <Grid item xs={12} md={6} lg={3}>
             <ComplexStatisticsCard
               color="success"
-              icon={<DirectionsRunIcon style={{ marginTop: "-15px", color: "white" }} />}
-              title="Motion"
-              count={summaryData.onlineMotion.toLocaleString()}
-              percentage={{ color: "success", label: "Total Online Fleet" }}
+              icon={<WifiIcon style={{ marginTop: "-15px" }} />}
+              title="Functional"
+              count={summaryData.functional.toLocaleString()}
+              percentage={{ color: "success", label: "Currently Active" }}
             />
           </Grid>
-          <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
-            <ComplexStatisticsCard
-              color="warning"
-              icon={<HourglassEmptyIcon style={{ marginTop: "-15px" }} />}
-              title="Idle"
-              count={summaryData.onlineIdle.toLocaleString()}
-              percentage={{ color: "success", label: "Total Idle Fleet" }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
+
+          {/* Non-Functional Devices */}
+          <Grid item xs={12} md={6} lg={3}>
             <ComplexStatisticsCard
               color="error"
-              icon={<StopIcon style={{ marginTop: "-15px" }} />}
-              title="Stopped"
-              count={summaryData.onlineStopped.toLocaleString()}
-              percentage={{ color: "success", label: "Total Stopped Fleet" }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
-            <ComplexStatisticsCard
-              color="warning"
               icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
-              title="Offline"
-              count={summaryData.offline.toLocaleString()}
-              percentage={{ color: "error", label: "Total Offline Fleet" }}
+              title="Non-Functional"
+              count={summaryData.nonFunctional.toLocaleString()}
+              percentage={{ color: "error", label: "Requires Attention" }}
             />
           </Grid>
-          <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
+
+          {/* Not Installed (If relevant) */}
+          <Grid item xs={12} md={6} lg={3}>
             <ComplexStatisticsCard
-              color="secondary"
-              icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
-              title="Unreachable"
-              count={summaryData.unreachable.toLocaleString()}
-              percentage={{ color: "success", label: "Total Unreachable Fleet" }}
+              color="info"
+              icon={<AssignmentIcon style={{ marginTop: "-15px" }} />}
+              title="Pending Installation"
+              count={summaryData.notInstalled.toLocaleString()}
+              percentage={{ color: "secondary", label: "In pipeline" }}
             />
           </Grid>
-        </Grid> */}
+        </Grid>
 
         {/* Charts */}
         <MDBox mt={4}>
@@ -473,7 +427,7 @@ function Dashboard() {
             </Grid> */}
           </Grid>
         </MDBox>
-                {/* NEW: Alerts box with horizontal scroll */}
+        {/* NEW: Alerts box with horizontal scroll */}
         <Card sx={{ mb: 3, boxShadow: 3, borderRadius: 2 }}>
           <MDBox p={2} display="flex" justifyContent="space-between" alignItems="center">
             <MDTypography variant="h6" fontWeight="medium">
@@ -545,7 +499,12 @@ function Dashboard() {
                       {alert.message || alert.description || "No description available."}
                     </MDTypography>
 
-                    <MDBox mt={1.5} display="flex" justifyContent="space-between" alignItems="center">
+                    <MDBox
+                      mt={1.5}
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
                       <MDTypography variant="caption" color="text">
                         {alert.time || alert.timestamp || ""}
                       </MDTypography>
@@ -567,13 +526,7 @@ function Dashboard() {
                 </Card>
               ))
             ) : (
-              <MDBox
-                width="100%"
-                display="flex"
-                justifyContent="center"
-                alignItems="center"
-                py={2}
-              >
+              <MDBox width="100%" display="flex" justifyContent="center" alignItems="center" py={2}>
                 <MDTypography variant="caption" color="text">
                   No alerts available.
                 </MDTypography>
@@ -581,7 +534,6 @@ function Dashboard() {
             )}
           </MDBox>
         </Card>
-
 
         {/* Filters card */}
         <Card sx={{ mb: 4, p: 2 }}>
