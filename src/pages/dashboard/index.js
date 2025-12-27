@@ -619,7 +619,7 @@ function Dashboard() {
         </Card>
 
         {/* IoT Installation Stats – improved boxes */}
-        <Grid container spacing={3} mb={4}>
+        {/* <Grid container spacing={3} mb={4}>
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
               <MDBox p={2}>
@@ -703,7 +703,7 @@ function Dashboard() {
               </MDBox>
             </Card>
           </Grid>
-        </Grid>
+        </Grid> */}
 
         {/* Reports – improved boxes */}
         <Grid container spacing={3} mb={4}>
