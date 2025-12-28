@@ -339,7 +339,7 @@ function Dashboard() {
         {/* Top statistics cards */}
         <Grid container spacing={3}>
           {/* Total Devices */}
-          <Grid item xs={12} md={6} lg={3}>
+          {/* <Grid item xs={12} md={6} lg={3}>
             <ComplexStatisticsCard
               color="dark"
               icon={<DevicesIcon style={{ marginTop: "-15px" }} />}
@@ -347,10 +347,10 @@ function Dashboard() {
               count={summaryData.total.toLocaleString()}
               percentage={{ color: "success", label: "Registered in system" }}
             />
-          </Grid>
+          </Grid> */}
 
           {/* Functional Devices */}
-          <Grid item xs={12} md={6} lg={3}>
+          {/* <Grid item xs={12} md={6} lg={3}>
             <ComplexStatisticsCard
               color="success"
               icon={<WifiIcon style={{ marginTop: "-15px" }} />}
@@ -358,10 +358,10 @@ function Dashboard() {
               count={summaryData.functional.toLocaleString()}
               percentage={{ color: "success", label: "Currently Active" }}
             />
-          </Grid>
+          </Grid> */}
 
           {/* Non-Functional Devices */}
-          <Grid item xs={12} md={6} lg={3}>
+          {/* <Grid item xs={12} md={6} lg={3}>
             <ComplexStatisticsCard
               color="error"
               icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
@@ -369,10 +369,10 @@ function Dashboard() {
               count={summaryData.nonFunctional.toLocaleString()}
               percentage={{ color: "error", label: "Requires Attention" }}
             />
-          </Grid>
+          </Grid> */}
 
           {/* Not Installed (If relevant) */}
-          <Grid item xs={12} md={6} lg={3}>
+          {/* <Grid item xs={12} md={6} lg={3}>
             <ComplexStatisticsCard
               color="info"
               icon={<AssignmentIcon style={{ marginTop: "-15px" }} />}
@@ -380,7 +380,7 @@ function Dashboard() {
               count={summaryData.notInstalled.toLocaleString()}
               percentage={{ color: "secondary", label: "In pipeline" }}
             />
-          </Grid>
+          </Grid> */}
         </Grid>
 
         {/* Charts */}
@@ -619,91 +619,98 @@ function Dashboard() {
         </Card>
 
         {/* IoT Installation Stats – improved boxes */}
-        {/* <Grid container spacing={3} mb={4}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
-              <MDBox p={2}>
-                <MDTypography
-                  variant="caption"
-                  fontWeight="medium"
-                  color="text"
-                  textTransform="uppercase"
-                >
-                  Total IoT to Install
-                </MDTypography>
-                <MDTypography variant="h4" fontWeight="bold" mt={1}>
-                  {iotStats.totalToInstall.toLocaleString()}
-                </MDTypography>
-                <MDTypography variant="caption" color="text" mt={0.5}>
-                  Planned deployments
-                </MDTypography>
-              </MDBox>
-            </Card>
-          </Grid>
+        {/* // Assuming you have a similar data fetching pattern like: */}
+{/* // const [summaryData, setSummaryData] = useState({ */}
+{/* //   total: 0,
+//   functional: 0,
+//   nonFunctional: 0,
+//   notInstalled: 0
+// }); */}
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #4CAF50" }}>
-              <MDBox p={2}>
-                <MDTypography
-                  variant="caption"
-                  fontWeight="medium"
-                  color="text"
-                  textTransform="uppercase"
-                >
-                  Total IoT Installed
-                </MDTypography>
-                <MDTypography variant="h4" fontWeight="bold" mt={1} color="success">
-                  {iotStats.totalInstalled.toLocaleString()}
-                </MDTypography>
-                <MDTypography variant="caption" color="text" mt={0.5}>
-                  Devices deployed on field
-                </MDTypography>
-              </MDBox>
-            </Card>
-          </Grid>
+<Grid container spacing={3} mb={4}>
+  <Grid item xs={12} sm={6} md={3}>
+    <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+      <MDBox p={2}>
+        <MDTypography
+          variant="caption"
+          fontWeight="medium"
+          color="text"
+          textTransform="uppercase"
+        >
+          Total IoT to Install
+        </MDTypography>
+        <MDTypography variant="h4" fontWeight="bold" mt={1}>
+          {summaryData.total.toLocaleString()}
+        </MDTypography>
+        <MDTypography variant="caption" color="text" mt={0.5}>
+          Planned deployments
+        </MDTypography>
+      </MDBox>
+    </Card>
+  </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #2196F3" }}>
-              <MDBox p={2}>
-                <MDTypography
-                  variant="caption"
-                  fontWeight="medium"
-                  color="text"
-                  textTransform="uppercase"
-                >
-                  Total Functional Devices
-                </MDTypography>
-                <MDTypography variant="h4" fontWeight="bold" mt={1} color="info">
-                  {iotStats.totalFunctional.toLocaleString()}
-                </MDTypography>
-                <MDTypography variant="caption" color="text" mt={0.5}>
-                  Currently reporting data
-                </MDTypography>
-              </MDBox>
-            </Card>
-          </Grid>
+  <Grid item xs={12} sm={6} md={3}>
+    <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #4CAF50" }}>
+      <MDBox p={2}>
+        <MDTypography
+          variant="caption"
+          fontWeight="medium"
+          color="text"
+          textTransform="uppercase"
+        >
+          Functional Devices
+        </MDTypography>
+        <MDTypography variant="h4" fontWeight="bold" mt={1} color="success">
+          {summaryData.functional.toLocaleString()}
+        </MDTypography>
+        <MDTypography variant="caption" color="text" mt={0.5}>
+          Devices deployed on field
+        </MDTypography>
+      </MDBox>
+    </Card>
+  </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #F44336" }}>
-              <MDBox p={2}>
-                <MDTypography
-                  variant="caption"
-                  fontWeight="medium"
-                  color="text"
-                  textTransform="uppercase"
-                >
-                  Total Non-Functional
-                </MDTypography>
-                <MDTypography variant="h4" fontWeight="bold" mt={1} color="error">
-                  {iotStats.totalNonFunctional.toLocaleString()}
-                </MDTypography>
-                <MDTypography variant="caption" color="text" mt={0.5}>
-                  Require attention
-                </MDTypography>
-              </MDBox>
-            </Card>
-          </Grid>
-        </Grid> */}
+  <Grid item xs={12} sm={6} md={3}>
+    <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #2196F3" }}>
+      <MDBox p={2}>
+        <MDTypography
+          variant="caption"
+          fontWeight="medium"
+          color="text"
+          textTransform="uppercase"
+        >
+          Total Non-Functional
+        </MDTypography>
+        <MDTypography variant="h4" fontWeight="bold" mt={1} color="info">
+          {summaryData.nonFunctional.toLocaleString()}
+        </MDTypography>
+        <MDTypography variant="caption" color="text" mt={0.5}>
+          Currently reporting data
+        </MDTypography>
+      </MDBox>
+    </Card>
+  </Grid>
+
+  <Grid item xs={12} sm={6} md={3}>
+    <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #F44336" }}>
+      <MDBox p={2}>
+        <MDTypography
+          variant="caption"
+          fontWeight="medium"
+          color="text"
+          textTransform="uppercase"
+        >
+Pending Installation        </MDTypography>
+        <MDTypography variant="h4" fontWeight="bold" mt={1} color="error">
+          {summaryData.notInstalled.toLocaleString()}
+        </MDTypography>
+        <MDTypography variant="caption" color="text" mt={0.5}>
+          Require attention
+        </MDTypography>
+      </MDBox>
+    </Card>
+  </Grid>
+</Grid>
 
         {/* Reports – improved boxes */}
         <Grid container spacing={3} mb={4}>
