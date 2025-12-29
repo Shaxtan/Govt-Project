@@ -158,64 +158,7 @@ class ApiService {
         callAlert("Error", error?.message);
       });
   }
-  /**
-   * --------------------------------------------------------------
-   *  getTrackPlayHistory – returns points with a derived status:
-   *
-   *    speed < 5  && ign == "Y"  →  IDLE
-   *    speed < 5  && ign == "N"  →  IDLE
-   *    speed == 0               →  STOP
-   *    speed > 5  && ign == "Y"  →  MOTION
-   *
-   *  The UI (LeafletControlsMap) now only reads `status` – no extra
-   *  field is needed.
-   * --------------------------------------------------------------
-   */
-  getTrackPlayHistory(data = {}, header = true) {
-    return this.postRequest("/reports/trackPlayHistory", data, header, SERVICES.dashboard)
-      .then((res) => {
-        const raw = res?.data?.data || [];
 
-        const normalizedData = raw.map((item) => {
-          const speedNum = Number(item.speed) || 0; // <-- safe number
-          const ign = (item.ign || "").toUpperCase(); // <-- "Y" / "N"
-
-          // ────── DERIVE STATUS ──────
-          let status = "IDLE"; // default
-
-          if (speedNum === 0) {
-            status = "STOP";
-          } else if (speedNum > 5 && ign === "Y") {
-            status = "MOTION";
-          } else if (speedNum < 5) {
-            status = "IDLE";
-          }
-          // ───────────────────────────
-
-          return {
-            name: item.vehicleNumber || item.imei,
-            lat: item.latitude,
-            lng: item.longitude,
-            ts: item.deviceTime,
-            speed: speedNum,
-            status, // <-- derived
-          };
-        });
-
-        return {
-          ...res,
-          data: {
-            response: {
-              report: normalizedData,
-            },
-          },
-        };
-      })
-      .catch((error) => {
-        callAlert("Error", error?.message || "Failed to fetch track play history");
-        throw error;
-      });
-  }
   getImeiDropdown(accid = 1, header = true) {
     return this.getRequest(
       `/reports/report/dropdown?accid=${accid}`,
@@ -344,29 +287,6 @@ class ApiService {
       throw error;
     });
   }
-
-  getUnreachableDevices(data = {}, callback, header = true) {
-    // 1. Destructure the accid from the data object passed from the component
-    const { accid } = data;
-
-    // 2. Use the accid to build a 'params' object for the URL query string
-    const urlParams = accid ? { accid } : {};
-
-    return this.postRequest(
-      "/reports/report/unrechableDevices", // <-- New Endpoint
-      data, // Empty data or other body data (keep for POST structure)
-      header,
-      SERVICES.dashboard, // Uses the :8075 dashboard base URL
-      urlParams // <-- **THIS IS THE CRITICAL CHANGE**
-    )
-      .then((res) => {
-        if (callback) callback(res);
-      })
-      .catch((error) => {
-        if (callback) callback({ message: error?.message });
-        callAlert("Error", error?.message || "Failed to fetch unreachable devices");
-      });
-  }
   getAlertsByAccount(data, callback) {
     return this.postRequest("/alerts/by-account", data, true, SERVICES.dashboard)
       .then((res) => {
@@ -392,6 +312,46 @@ class ApiService {
       })
       .catch((error) => {
         callAlert("Error", error?.message || "Failed to fetch DB alerts");
+        throw error;
+      });
+  }
+  // Inside ApiService class
+  getNonFunctionalReport(accId, startTime, endTime) {
+    const data = {
+      accid: accId,
+      imeis: [""], // As per your curl request
+      startTime: startTime,
+      endTime: endTime,
+      pageSize: 0,
+    };
+
+    return this.postRequest("/usage/v2/non-functional-iot", data, true, SERVICES.dashboard)
+      .then((res) => {
+        // Return the data array directly for easier mapping in the component
+        return res?.data?.data || [];
+      })
+      .catch((error) => {
+        callAlert("Error", "Failed to fetch Non-Functional report");
+        throw error;
+      });
+  }
+  // Inside ApiService class
+  getGeneralReport(accId, startTime, endTime) {
+    const data = {
+      accid: accId,
+      imeis: [""],
+      startTime: startTime,
+      endTime: endTime,
+      pageSize: 0,
+    };
+
+    return this.postRequest("/usage/v2/report", data, true, SERVICES.dashboard)
+      .then((res) => {
+        // We return the raw data array
+        return res?.data?.data || [];
+      })
+      .catch((error) => {
+        callAlert("Error", "Failed to fetch General Report");
         throw error;
       });
   }

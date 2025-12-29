@@ -34,13 +34,13 @@ import PieChart from "../../assets/components/examples/Charts/PieChart";
 import Projects from "./components/DashboardTable";
 import Chatbot from "./Chatbot";
 import AlertModal from "../Modals/Modal";
-import CloseIcon from '@mui/icons-material/Close';
+import CloseIcon from "@mui/icons-material/Close";
 // import AssignmentIcon from '@mui/icons-material/Assignment';
 // import VisibilityIcon from '@mui/icons-material/Visibility';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import IconButton from '@mui/material/IconButton';
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import IconButton from "@mui/material/IconButton";
 const getInitialAccountId = () => {
   try {
     const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
@@ -61,6 +61,8 @@ function Dashboard() {
   const [devices, setDevices] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
+  const [vtsData, setVtsData] = useState([]); // To store the API response
+  const [tableLoading, setTableLoading] = useState(false); // To handle loading state
 
   const [summaryData, setSummaryData] = useState({
     total: 0,
@@ -73,7 +75,7 @@ function Dashboard() {
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedAlertType, setSelectedAlertType] = useState(null);
-    const [openModal, setOpenModal] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
 
   const handleOpenModal = (reportTitle) => {
@@ -86,15 +88,57 @@ function Dashboard() {
     setSelectedReport(null);
   };
 
-  const handleReportClick = (reportTitle) => {
-    if (reportTitle === "Review Report" || reportTitle === "Non-Functional Scheme Report") {
+  const handleReportClick = async (reportTitle) => {
+    if (reportTitle === "Non-Functional Scheme Report") {
+      setSelectedReport(reportTitle);
+      setOpenModal(true);
+      setTableLoading(true);
+
+      try {
+        // Calculate dates (Last 30 days)
+        const end = new Date().toISOString().slice(0, 19).replace("T", " ");
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        const start = startDate.toISOString().slice(0, 19).replace("T", " ");
+
+        // Call the API
+        const reportData = await ApiService.getNonFunctionalReport(selectedAccountId, start, end);
+        setVtsData(reportData); // Store the data for the table
+      } catch (error) {
+        console.error("Failed to load report", error);
+      } finally {
+        setTableLoading(false);
+      }
+    } else if (reportTitle === "Review Report") {
       handleOpenModal(reportTitle);
-    } else {
-      // Handle General Report click - navigate or other action
-      console.log("Navigate to General Report");
     }
   };
 
+  const handleViewReport = async () => {
+    setIsTableModalOpen(true);
+    setTableLoading(true);
+
+    try {
+      // Calculate dates for the API (last 30 days based on current time)
+      const end = new Date().toISOString().slice(0, 19).replace("T", " ");
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+      const start = startDate.toISOString().slice(0, 19).replace("T", " ");
+
+      const reportData = await ApiService.getNonFunctionalReport(
+        selectedAccountId || 1,
+        start,
+        end
+      );
+
+      // Pass this data to your state that the Projects component will consume
+      setVtsData(reportData);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setTableLoading(false);
+    }
+  };
 
   // Filter state
   const [filterData, setFilterData] = useState({
@@ -192,161 +236,6 @@ function Dashboard() {
   const handleSearch = () => {
     // Plug your API call here using filterData.area, filterData.panchayat, filterData.ward
   };
-
-  const onlineOfflinePieData = useMemo(() => {
-    const online = summaryData.onlineIdle + summaryData.onlineStopped + summaryData.onlineMotion;
-    return {
-      labels: ["Online", "Offline", "Unreachable"],
-      datasets: {
-        label: "Connection Status",
-        backgroundColors: ["success", "error", "info"],
-        data: [online, summaryData.offline, summaryData.unreachable],
-      },
-    };
-  }, [summaryData]);
-
-  const allDeviceStatusPieData = useMemo(
-    () => ({
-      labels: ["In Motion", "Stopped", "Idle"],
-      datasets: {
-        label: "Vehicle Status",
-        backgroundColors: ["success", "error", "warning"],
-        data: [
-          summaryData.onlineMotion,
-          summaryData.onlineStopped + summaryData.offline,
-          summaryData.onlineIdle,
-        ],
-      },
-    }),
-    [summaryData]
-  );
-
-  const dynamicAlertPieData = useMemo(() => {
-    const labels = alertApiData.summary.map((item) => item.type);
-    const counts = alertApiData.summary.map((item) => item.count);
-    return {
-      labels: labels.length > 0 ? labels : ["No Alerts"],
-      datasets: {
-        label: "Alert Count",
-        backgroundColors: ["error", "warning", "info", "primary", "dark", "secondary"],
-        data: counts.length > 0 ? counts : [0],
-      },
-    };
-  }, [alertApiData]);
-
-  const fuelPieData = useMemo(
-    () => ({
-      labels: ["Efficient", "Average", "High Usage"],
-      datasets: {
-        label: "Fuel",
-        backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
-        data: [30, 40, 30],
-      },
-    }),
-    []
-  );
-
-  const geofencePieData = useMemo(
-    () => ({
-      labels: ["Inside", "Outside", "Violations"],
-      datasets: {
-        label: "Geofence",
-        backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
-        data: [60, 20, 20],
-      },
-    }),
-    []
-  );
-
-  const healthPieData = useMemo(
-    () => ({
-      labels: ["Good", "Service Due", "Critical"],
-      datasets: {
-        label: "Health",
-        backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
-        data: [70, 20, 10],
-      },
-    }),
-    []
-  );
-
-  const renderChart1 = useMemo(
-    () => (
-      <PieChart
-        icon={{ color: "success", component: <WifiIcon /> }}
-        title="Online vs Offline"
-        chart={onlineOfflinePieData}
-      />
-    ),
-    [onlineOfflinePieData]
-  );
-
-  const renderChart2 = useMemo(
-    () => (
-      <PieChart
-        icon={{ color: "dark", component: <DonutLargeIcon /> }}
-        title="Vehicle Running Status"
-        chart={allDeviceStatusPieData}
-      />
-    ),
-    [allDeviceStatusPieData]
-  );
-
-  const renderChart3 = useMemo(() => {
-    const chartConfigs = {
-      ...dynamicAlertPieData,
-      options: {
-        onClick: (event, elements) => {
-          if (elements.length > 0) {
-            const index = elements[0].index;
-            const typeClicked = dynamicAlertPieData.labels[index];
-            handleOpenAlertModal(typeClicked);
-          }
-        },
-      },
-    };
-    return (
-      <PieChart
-        icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
-        title="Alert Type Distribution"
-        chart={chartConfigs}
-      />
-    );
-  }, [dynamicAlertPieData]);
-
-  // const renderChart4 = useMemo(
-  //   () => (
-  //     <PieChart
-  //       icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
-  //       title="Fuel Usage"
-  //       chart={fuelPieData}
-  //     />
-  //   ),
-  //   [fuelPieData]
-  // );
-
-  // const renderChart5 = useMemo(
-  //   () => (
-  //     <PieChart
-  //       icon={{ color: "error", component: <Icon>security</Icon> }}
-  //       title="Geofence Violations"
-  //       chart={geofencePieData}
-  //     />
-  //   ),
-  //   [geofencePieData]
-  // );
-
-  // const renderChart6 = useMemo(
-  //   () => (
-  //     <PieChart
-  //       icon={{ color: "info", component: <Icon>healing</Icon> }}
-  //       title="Vehicle Health"
-  //       chart={healthPieData}
-  //     />
-  //   ),
-  //   [healthPieData]
-  // );
-
   return (
     <DashboardLayout>
       <DashboardNavbar
@@ -364,97 +253,6 @@ function Dashboard() {
       <MDBox py={3} pt={1} pb={1} />
 
       <MDBox py={0}>
-        {/* Top statistics cards */}
-        <Grid container spacing={3}>
-          {/* Total Devices */}
-          {/* <Grid item xs={12} md={6} lg={3}>
-            <ComplexStatisticsCard
-              color="dark"
-              icon={<DevicesIcon style={{ marginTop: "-15px" }} />}
-              title="Total Devices"
-              count={summaryData.total.toLocaleString()}
-              percentage={{ color: "success", label: "Registered in system" }}
-            />
-          </Grid> */}
-
-          {/* Functional Devices */}
-          {/* <Grid item xs={12} md={6} lg={3}>
-            <ComplexStatisticsCard
-              color="success"
-              icon={<WifiIcon style={{ marginTop: "-15px" }} />}
-              title="Functional"
-              count={summaryData.functional.toLocaleString()}
-              percentage={{ color: "success", label: "Currently Active" }}
-            />
-          </Grid> */}
-
-          {/* Non-Functional Devices */}
-          {/* <Grid item xs={12} md={6} lg={3}>
-            <ComplexStatisticsCard
-              color="error"
-              icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
-              title="Non-Functional"
-              count={summaryData.nonFunctional.toLocaleString()}
-              percentage={{ color: "error", label: "Requires Attention" }}
-            />
-          </Grid> */}
-
-          {/* Not Installed (If relevant) */}
-          {/* <Grid item xs={12} md={6} lg={3}>
-            <ComplexStatisticsCard
-              color="info"
-              icon={<AssignmentIcon style={{ marginTop: "-15px" }} />}
-              title="Pending Installation"
-              count={summaryData.notInstalled.toLocaleString()}
-              percentage={{ color: "secondary", label: "In pipeline" }}
-            />
-          </Grid> */}
-        </Grid>
-
-        {/* Charts */}
-        <MDBox mt={4}>
-          <Grid container spacing={2}>
-            {/* <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
-                {renderChart1}
-              </MDBox>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
-                {renderChart2}
-              </MDBox>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox
-                mb={3}
-                sx={{
-                  height: "300px !important",
-                  cursor: "pointer",
-                  transition: "transform 0.2s",
-                  "&:hover": { transform: "scale(1.02)" },
-                }}
-                onClick={() => handleOpenAlertModal(null)}
-              >
-                {renderChart3}
-              </MDBox>
-            </Grid> */}
-            {/* <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                {renderChart4}
-              </MDBox>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                {renderChart5}
-              </MDBox>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                {renderChart6}
-              </MDBox>
-            </Grid> */}
-          </Grid>
-        </MDBox>
         {/* NEW: Alerts box with horizontal scroll */}
         <Card sx={{ mb: 3, boxShadow: 3, borderRadius: 2 }}>
           <MDBox p={2} display="flex" justifyContent="space-between" alignItems="center">
@@ -646,185 +444,183 @@ function Dashboard() {
           </MDBox>
         </Card>
 
-        {/* IoT Installation Stats – improved boxes */}
-        {/* // Assuming you have a similar data fetching pattern like: */}
-{/* // const [summaryData, setSummaryData] = useState({ */}
-{/* //   total: 0,
-//   functional: 0,
-//   nonFunctional: 0,
-//   notInstalled: 0
-// }); */}
-
-<Grid container spacing={3} mb={4}>
-  <Grid item xs={12} sm={6} md={3}>
-    <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
-      <MDBox p={2}>
-        <MDTypography
-          variant="caption"
-          fontWeight="medium"
-          color="text"
-          textTransform="uppercase"
-        >
-          Total IoT to Install
-        </MDTypography>
-        <MDTypography variant="h4" fontWeight="bold" mt={1}>
-          {summaryData.total.toLocaleString()}
-        </MDTypography>
-        <MDTypography variant="caption" color="text" mt={0.5}>
-          Planned deployments
-        </MDTypography>
-      </MDBox>
-    </Card>
-  </Grid>
-
-  <Grid item xs={12} sm={6} md={3}>
-    <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #4CAF50" }}>
-      <MDBox p={2}>
-        <MDTypography
-          variant="caption"
-          fontWeight="medium"
-          color="text"
-          textTransform="uppercase"
-        >
-          Functional Devices
-        </MDTypography>
-        <MDTypography variant="h4" fontWeight="bold" mt={1} color="success">
-          {summaryData.functional.toLocaleString()}
-        </MDTypography>
-        <MDTypography variant="caption" color="text" mt={0.5}>
-          Devices deployed on field
-        </MDTypography>
-      </MDBox>
-    </Card>
-  </Grid>
-
-  <Grid item xs={12} sm={6} md={3}>
-    <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #2196F3" }}>
-      <MDBox p={2}>
-        <MDTypography
-          variant="caption"
-          fontWeight="medium"
-          color="text"
-          textTransform="uppercase"
-        >
-          Total Non-Functional
-        </MDTypography>
-        <MDTypography variant="h4" fontWeight="bold" mt={1} color="info">
-          {summaryData.nonFunctional.toLocaleString()}
-        </MDTypography>
-        <MDTypography variant="caption" color="text" mt={0.5}>
-          Currently reporting data
-        </MDTypography>
-      </MDBox>
-    </Card>
-  </Grid>
-
-  <Grid item xs={12} sm={6} md={3}>
-    <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #F44336" }}>
-      <MDBox p={2}>
-        <MDTypography
-          variant="caption"
-          fontWeight="medium"
-          color="text"
-          textTransform="uppercase"
-        >
-Pending Installation        </MDTypography>
-        <MDTypography variant="h4" fontWeight="bold" mt={1} color="error">
-          {summaryData.notInstalled.toLocaleString()}
-        </MDTypography>
-        <MDTypography variant="caption" color="text" mt={0.5}>
-          Require attention
-        </MDTypography>
-      </MDBox>
-    </Card>
-  </Grid>
-</Grid>
-
-        {/* Reports – improved boxes */}
         <Grid container spacing={3} mb={4}>
-        {[
-          { title: "General Report", desc: "View all standard device logs" },
-          { title: "Review Report", desc: "Summary of maintenance checks" },
-          { title: "Non-Functional Scheme Report", desc: "List of inactive schemes" },
-        ].map((report, index) => (
-          <Grid item xs={12} md={4} key={index}>
+          <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
-              <MDBox p={3} textAlign="center">
-                <MDBox
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  width="3rem"
-                  height="3rem"
-                  bgColor="info"
-                  variant="gradient"
-                  borderRadius="lg"
-                  shadow="md"
-                  mx="auto"
-                  mb={2}
-                >
-                  <AssignmentIcon fontSize="medium" sx={{ color: "#fff" }} />
-                </MDBox>
-                <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
-                  {report.title}
-                </MDTypography>
+              <MDBox p={2}>
                 <MDTypography
-                  variant="button"
+                  variant="caption"
+                  fontWeight="medium"
                   color="text"
-                  fontWeight="regular"
-                  mb={2}
-                  display="block"
+                  textTransform="uppercase"
                 >
-                  {report.desc}
+                  Total IoT to Install
                 </MDTypography>
-                <Divider sx={{ mb: 2 }} />
-                <MDButton
-                  variant="outlined"
-                  color="info"
-                  size="small"
-                  startIcon={<VisibilityIcon />}
-                  onClick={() => handleReportClick(report.title)}
-                >
-                  View Report
-                </MDButton>
+                <MDTypography variant="h4" fontWeight="bold" mt={1}>
+                  {summaryData.total.toLocaleString()}
+                </MDTypography>
+                <MDTypography variant="caption" color="text" mt={0.5}>
+                  Planned deployments
+                </MDTypography>
               </MDBox>
             </Card>
           </Grid>
-        ))}
-      </Grid>
 
-      {/* Modal/Popup */}
-      <Dialog
-        open={openModal}
-        onClose={handleCloseModal}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            minHeight: '80vh'
-          }
-        }}
-      >
-        <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <MDTypography variant="h5" fontWeight="medium">
-            {selectedReport}
-          </MDTypography>
-          <IconButton
-            aria-label="close"
-            onClick={handleCloseModal}
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #4CAF50" }}>
+              <MDBox p={2}>
+                <MDTypography
+                  variant="caption"
+                  fontWeight="medium"
+                  color="text"
+                  textTransform="uppercase"
+                >
+                  Functional Devices
+                </MDTypography>
+                <MDTypography variant="h4" fontWeight="bold" mt={1} color="success">
+                  {summaryData.functional.toLocaleString()}
+                </MDTypography>
+                <MDTypography variant="caption" color="text" mt={0.5}>
+                  Devices deployed on field
+                </MDTypography>
+              </MDBox>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #2196F3" }}>
+              <MDBox p={2}>
+                <MDTypography
+                  variant="caption"
+                  fontWeight="medium"
+                  color="text"
+                  textTransform="uppercase"
+                >
+                  Total Non-Functional
+                </MDTypography>
+                <MDTypography variant="h4" fontWeight="bold" mt={1} color="info">
+                  {summaryData.nonFunctional.toLocaleString()}
+                </MDTypography>
+                <MDTypography variant="caption" color="text" mt={0.5}>
+                  Currently reporting data
+                </MDTypography>
+              </MDBox>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #F44336" }}>
+              <MDBox p={2}>
+                <MDTypography
+                  variant="caption"
+                  fontWeight="medium"
+                  color="text"
+                  textTransform="uppercase"
+                >
+                  Pending Installation{" "}
+                </MDTypography>
+                <MDTypography variant="h4" fontWeight="bold" mt={1} color="error">
+                  {summaryData.notInstalled.toLocaleString()}
+                </MDTypography>
+                <MDTypography variant="caption" color="text" mt={0.5}>
+                  Require attention
+                </MDTypography>
+              </MDBox>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Reports – improved boxes */}
+        <Grid container spacing={3} mb={4}>
+          {[
+            { title: "General Report", desc: "View all standard device logs" },
+            { title: "Review Report", desc: "Summary of maintenance checks" },
+            { title: "Non-Functional Scheme Report", desc: "List of inactive schemes" },
+          ].map((report, index) => (
+            <Grid item xs={12} md={4} key={index}>
+              <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+                <MDBox p={3} textAlign="center">
+                  <MDBox
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    width="3rem"
+                    height="3rem"
+                    bgColor="info"
+                    variant="gradient"
+                    borderRadius="lg"
+                    shadow="md"
+                    mx="auto"
+                    mb={2}
+                  >
+                    <AssignmentIcon fontSize="medium" sx={{ color: "#fff" }} />
+                  </MDBox>
+                  <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
+                    {report.title}
+                  </MDTypography>
+                  <MDTypography
+                    variant="button"
+                    color="text"
+                    fontWeight="regular"
+                    mb={2}
+                    display="block"
+                  >
+                    {report.desc}
+                  </MDTypography>
+                  <Divider sx={{ mb: 2 }} />
+                  <MDButton
+                    variant="outlined"
+                    color="info"
+                    size="small"
+                    startIcon={<VisibilityIcon />}
+                    onClick={() => handleReportClick(report.title)}
+                  >
+                    View Report
+                  </MDButton>
+                </MDBox>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* Modal/Popup */}
+        <Dialog
+          open={openModal}
+          onClose={handleCloseModal}
+          maxWidth="lg"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 2, minHeight: "80vh" } }}
+        >
+          <DialogTitle
             sx={{
-              color: (theme) => theme.palette.grey[500],
+              m: 0,
+              p: 2,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Projects />
-        </DialogContent>
-      </Dialog>
-  
+            <MDTypography variant="h5" fontWeight="medium">
+              {selectedReport}
+            </MDTypography>
+            <IconButton
+              onClick={handleCloseModal}
+              sx={{ color: (theme) => theme.palette.grey[500] }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers>
+            {/* 💡 CHANGE THIS LINE: Pass the data and account ID */}
+            {tableLoading ? (
+              <MDBox display="flex" justifyContent="center" p={5}>
+                <MDTypography variant="h6">Loading Report Data...</MDTypography>
+              </MDBox>
+            ) : (
+              <Projects accountId={selectedAccountId} reportData={vtsData} />
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Projects (if needed) */}
         {/* <MDBox ref={projectsRef}>
