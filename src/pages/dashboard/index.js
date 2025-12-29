@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import ApiService from "services/ApiService";
 import { useNavigate } from "react-router-dom";
-
+// import Projects from "./components/DashboardTable";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CloudOffIcon from "@mui/icons-material/CloudOff";
 import DevicesIcon from "@mui/icons-material/Devices";
@@ -34,7 +34,13 @@ import PieChart from "../../assets/components/examples/Charts/PieChart";
 import Projects from "./components/DashboardTable";
 import Chatbot from "./Chatbot";
 import AlertModal from "../Modals/Modal";
-
+import CloseIcon from '@mui/icons-material/Close';
+// import AssignmentIcon from '@mui/icons-material/Assignment';
+// import VisibilityIcon from '@mui/icons-material/Visibility';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import IconButton from '@mui/material/IconButton';
 const getInitialAccountId = () => {
   try {
     const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
@@ -67,6 +73,28 @@ function Dashboard() {
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedAlertType, setSelectedAlertType] = useState(null);
+    const [openModal, setOpenModal] = useState(false);
+  const [selectedReport, setSelectedReport] = useState(null);
+
+  const handleOpenModal = (reportTitle) => {
+    setSelectedReport(reportTitle);
+    setOpenModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setSelectedReport(null);
+  };
+
+  const handleReportClick = (reportTitle) => {
+    if (reportTitle === "Review Report" || reportTitle === "Non-Functional Scheme Report") {
+      handleOpenModal(reportTitle);
+    } else {
+      // Handle General Report click - navigate or other action
+      console.log("Navigate to General Report");
+    }
+  };
+
 
   // Filter state
   const [filterData, setFilterData] = useState({
@@ -714,55 +742,89 @@ Pending Installation        </MDTypography>
 
         {/* Reports – improved boxes */}
         <Grid container spacing={3} mb={4}>
-          {[
-            { title: "General Report", desc: "View all standard device logs" },
-            { title: "Review Report", desc: "Summary of maintenance checks" },
-            { title: "Non-Functional Scheme Report", desc: "List of inactive schemes" },
-          ].map((report, index) => (
-            <Grid item xs={12} md={4} key={index}>
-              <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
-                <MDBox p={3} textAlign="center">
-                  <MDBox
-                    display="flex"
-                    justifyContent="center"
-                    alignItems="center"
-                    width="3rem"
-                    height="3rem"
-                    bgColor="info"
-                    variant="gradient"
-                    borderRadius="lg"
-                    shadow="md"
-                    mx="auto"
-                    mb={2}
-                  >
-                    <AssignmentIcon fontSize="medium" sx={{ color: "#fff" }} />
-                  </MDBox>
-                  <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
-                    {report.title}
-                  </MDTypography>
-                  <MDTypography
-                    variant="button"
-                    color="text"
-                    fontWeight="regular"
-                    mb={2}
-                    display="block"
-                  >
-                    {report.desc}
-                  </MDTypography>
-                  <Divider sx={{ mb: 2 }} />
-                  <MDButton
-                    variant="outlined"
-                    color="info"
-                    size="small"
-                    startIcon={<VisibilityIcon />}
-                  >
-                    View Report
-                  </MDButton>
+        {[
+          { title: "General Report", desc: "View all standard device logs" },
+          { title: "Review Report", desc: "Summary of maintenance checks" },
+          { title: "Non-Functional Scheme Report", desc: "List of inactive schemes" },
+        ].map((report, index) => (
+          <Grid item xs={12} md={4} key={index}>
+            <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+              <MDBox p={3} textAlign="center">
+                <MDBox
+                  display="flex"
+                  justifyContent="center"
+                  alignItems="center"
+                  width="3rem"
+                  height="3rem"
+                  bgColor="info"
+                  variant="gradient"
+                  borderRadius="lg"
+                  shadow="md"
+                  mx="auto"
+                  mb={2}
+                >
+                  <AssignmentIcon fontSize="medium" sx={{ color: "#fff" }} />
                 </MDBox>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+                <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
+                  {report.title}
+                </MDTypography>
+                <MDTypography
+                  variant="button"
+                  color="text"
+                  fontWeight="regular"
+                  mb={2}
+                  display="block"
+                >
+                  {report.desc}
+                </MDTypography>
+                <Divider sx={{ mb: 2 }} />
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  startIcon={<VisibilityIcon />}
+                  onClick={() => handleReportClick(report.title)}
+                >
+                  View Report
+                </MDButton>
+              </MDBox>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Modal/Popup */}
+      <Dialog
+        open={openModal}
+        onClose={handleCloseModal}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            minHeight: '80vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <MDTypography variant="h5" fontWeight="medium">
+            {selectedReport}
+          </MDTypography>
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseModal}
+            sx={{
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Projects />
+        </DialogContent>
+      </Dialog>
+  
 
         {/* Projects (if needed) */}
         {/* <MDBox ref={projectsRef}>
