@@ -1,0 +1,161 @@
+/* Input / selects */
+.gr-input-root .MuiOutlinedInput-root {
+  border-radius: 8px;
+}
+
+.gr-select {
+  height: 45px;
+}
+
+/* Map */
+.gr-map-wrapper {
+  height: 450px;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.gr-map-container {
+  height: 100%;
+  width: 100%;
+}
+
+/* Modal box */
+.gr-modal-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 1200px;
+  background-color: var(--mui-palette-background-paper, #fff);
+  box-shadow: 24px;
+  padding: 32px;
+  border-radius: 8px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Table container */
+.gr-table-container {
+  max-height: 500px;
+  overflow: auto;
+  border: 1px solid #e0e0e0;
+}
+
+/* Table */
+.gr-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Header cells */
+.gr-th {
+  font-weight: bold;
+  background-color: #f5f5f5;
+  padding: 16px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.gr-th-district {
+  width: 10%;
+  padding-right: 8px;
+  border-radius: 8px 0 0 0;
+}
+
+.gr-th-panchayat {
+  width: 12%;
+  padding-left: 48px;
+  padding-right: 12px;
+}
+
+.gr-th-ward {
+  width: 8%;
+  padding-left: 56px;
+  padding-right: 6px;
+}
+
+.gr-th-name {
+  width: 15%;
+  padding-left: 116px;
+  padding-right: 10px;
+}
+
+.gr-th-start {
+  width: 18%;
+  padding-left: 90px;
+  padding-right: 15px;
+}
+
+.gr-th-end {
+  width: 18%;
+  padding-left: 94px;
+  padding-right: 10px;
+}
+
+.gr-th-qty {
+  width: 8%;
+  padding-left: 65px;
+  padding-right: 8px;
+}
+
+.gr-th-duration {
+  width: 11%;
+  padding-left: 88px;
+  border-radius: 0 8px 0 0;
+}
+
+/* Body cells */
+.gr-td {
+  padding: 16px;
+}
+
+.gr-td-district {
+  width: 20%;
+  padding-right: 18px;
+}
+
+.gr-td-panchayat {
+  width: 12%;
+  padding-left: 8px;
+  padding-right: 12px;
+}
+
+.gr-td-ward {
+  width: 8%;
+  padding-left: 12px;
+  padding-right: 6px;
+}
+
+.gr-td-name {
+  width: 15%;
+  padding-left: 6px;
+  padding-right: 10px;
+}
+
+.gr-td-start {
+  width: 18%;
+  padding-left: 10px;
+  padding-right: 15px;
+}
+
+.gr-td-end {
+  width: 18%;
+  padding-left: 15px;
+  padding-right: 10px;
+}
+
+.gr-td-qty {
+  width: 8%;
+  padding-left: 10px;
+  padding-right: 8px;
+}
+
+.gr-td-duration {
+  width: 11%;
+  padding-left: 8px;
+}
