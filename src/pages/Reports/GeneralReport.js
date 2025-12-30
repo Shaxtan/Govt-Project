@@ -136,13 +136,16 @@ function GeneralReport() {
                   <Grid container spacing={3}>
                     {/* ... (Existing Area/Panchayat/Ward Selects) ... */}
                     <Grid item xs={12} md={4}>
+                      <MDBox mb={1} ml={0.5}>
+                        <MDTypography variant="caption" fontWeight="bold">
+                          SELECT AREA
+                        </MDTypography>
+                      </MDBox>
                       <FormControl variant="outlined" fullWidth className="gr-input-root">
-                        <InputLabel>Select Area</InputLabel>
-                        <Select
-                          value={area}
-                          label="Select Area"
-                          onChange={(e) => setArea(e.target.value)}
-                        >
+                        <Select value={area} onChange={(e) => setArea(e.target.value)} displayEmpty>
+                          <MenuItem value="" disabled>
+                            Select Area
+                          </MenuItem>
                           {areas.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
                               {item.name}
@@ -151,14 +154,22 @@ function GeneralReport() {
                         </Select>
                       </FormControl>
                     </Grid>
+
                     <Grid item xs={12} md={4}>
+                      <MDBox mb={1} ml={0.5}>
+                        <MDTypography variant="caption" fontWeight="bold">
+                          SELECT PANCHAYAT
+                        </MDTypography>
+                      </MDBox>
                       <FormControl variant="outlined" fullWidth className="gr-input-root">
-                        <InputLabel>Select Panchayat</InputLabel>
                         <Select
                           value={panchayat}
-                          label="Select Panchayat"
                           onChange={(e) => setPanchayat(e.target.value)}
+                          displayEmpty
                         >
+                          <MenuItem value="" disabled>
+                            Select Panchayat
+                          </MenuItem>
                           {panchayats.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
                               {item.name}
@@ -167,14 +178,18 @@ function GeneralReport() {
                         </Select>
                       </FormControl>
                     </Grid>
+
                     <Grid item xs={12} md={4}>
+                      <MDBox mb={1} ml={0.5}>
+                        <MDTypography variant="caption" fontWeight="bold">
+                          SELECT WARD
+                        </MDTypography>
+                      </MDBox>
                       <FormControl variant="outlined" fullWidth className="gr-input-root">
-                        <InputLabel>Select Ward</InputLabel>
-                        <Select
-                          value={ward}
-                          label="Select Ward"
-                          onChange={(e) => setWard(e.target.value)}
-                        >
+                        <Select value={ward} onChange={(e) => setWard(e.target.value)} displayEmpty>
+                          <MenuItem value="" disabled>
+                            Select Ward
+                          </MenuItem>
                           {wards.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
                               {item.name}
@@ -261,60 +276,80 @@ function GeneralReport() {
 
       {/* Result Modal */}
       <Modal open={open} onClose={() => setOpen(false)}>
-        <MDBox className="gr-modal-box">
-          <MDTypography variant="h6" mb={2}>
-            General Report Details
-          </MDTypography>
-          <TableContainer component={Paper} className="gr-table-container">
-            <Table stickyHeader className="gr-table">
-              <TableHead>
-                <TableRow>
-                  <TableCell className="gr-th">District</TableCell>
-                  <TableCell className="gr-th">Block</TableCell>
-                  <TableCell className="gr-th">Panchayat</TableCell>
-                  <TableCell className="gr-th">Ward</TableCell>
-                  <TableCell className="gr-th">Start Time</TableCell>
-                  <TableCell className="gr-th">End Time</TableCell>
-                  <TableCell className="gr-th">Qty(Litres)</TableCell>
-                  <TableCell className="gr-th">Duration</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {reportData.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="gr-td">{row.meta?.district || "N/A"}</TableCell>
-                    <TableCell className="gr-td">{row.meta?.block || "N/A"}</TableCell>
-                    <TableCell className="gr-td">{row.meta?.panchayat || "N/A"}</TableCell>
-                    <TableCell className="gr-td">{row.meta?.name || "N/A"}</TableCell>
-                    <TableCell className="gr-td">
-                      {new Date(row.startTime?.date).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="gr-td">
-                      {new Date(row.endtime?.date).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="gr-td">{row.description?.qty || "N/A"}</TableCell>
-                    <TableCell className="gr-td">
-                      {row.description?.duration
-                        ? (() => {
-                            const totalSeconds = row.description.duration;
-                            const hours = Math.floor(totalSeconds / 3600);
-                            const minutes = Math.floor((totalSeconds % 3600) / 60);
-                            return hours === 0 ? `${minutes} min` : `${hours} hr ${minutes} min`;
-                          })()
-                        : "N/A"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <MDBox mt={3} display="flex" justifyContent="flex-end">
-            <MDButton onClick={() => setOpen(false)} variant="gradient" color="error">
-              Close
-            </MDButton>
-          </MDBox>
-        </MDBox>
-      </Modal>
+  <MDBox className="gr-modal-box">
+    <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+      <MDTypography variant="h6">
+        General Report Details
+      </MDTypography>
+      <MDButton 
+        onClick={() => setOpen(false)} 
+        variant="gradient" 
+        color="error"
+        size="small"
+      >
+        Close
+      </MDButton>
+    </MDBox>
+    
+    <TableContainer component={Paper} className="gr-table-container">
+      <Table stickyHeader className="gr-table">
+        <TableHead>
+          <TableRow>
+            <TableCell className="gr-th" sx={{ pr: 6 }}>
+              District
+            </TableCell>
+            <TableCell className="gr-th" sx={{ pr: 8 }}>
+              Block
+            </TableCell>
+            <TableCell className="gr-th" sx={{ pr: 14 }}>
+              Panchayat
+            </TableCell>
+            <TableCell className="gr-th" sx={{ pr: 9 }}>
+              Ward
+            </TableCell>
+            <TableCell className="gr-th" sx={{ pr: 6, whiteSpace: "nowrap" }}>
+              Start Time
+            </TableCell>
+            <TableCell className="gr-th" sx={{ pr: 2, whiteSpace: "nowrap" }}>
+              End Time
+            </TableCell>
+            <TableCell className="gr-th" sx={{ pr: 8 }}>
+              Qty(Litres)
+            </TableCell>
+            <TableCell className="gr-th">Duration</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {reportData.map((row) => (
+            <TableRow key={row.id}>
+              <TableCell className="gr-td">{row.meta?.district || "N/A"}</TableCell>
+              <TableCell className="gr-td">{row.meta?.block || "N/A"}</TableCell>
+              <TableCell className="gr-td">{row.meta?.panchayat || "N/A"}</TableCell>
+              <TableCell className="gr-td">{row.meta?.name || "N/A"}</TableCell>
+              <TableCell className="gr-td">
+                {new Date(row.startTime?.date).toLocaleString()}
+              </TableCell>
+              <TableCell className="gr-td">
+                {new Date(row.endtime?.date).toLocaleString()}
+              </TableCell>
+              <TableCell className="gr-td">{row.description?.qty || "N/A"}</TableCell>
+              <TableCell className="gr-td">
+                {row.description?.duration
+                  ? (() => {
+                      const totalSeconds = row.description.duration;
+                      const hours = Math.floor(totalSeconds / 3600);
+                      const minutes = Math.floor((totalSeconds % 3600) / 60);
+                      return hours === 0 ? `${minutes} min` : `${hours} hr ${minutes} min`;
+                    })()
+                  : "N/A"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </MDBox>
+</Modal>
     </DashboardLayout>
   );
 }

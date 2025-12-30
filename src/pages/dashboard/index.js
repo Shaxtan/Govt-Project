@@ -12,7 +12,7 @@ import StopIcon from "@mui/icons-material/Stop";
 import SearchIcon from "@mui/icons-material/Search";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-
+import GeneralReport from "pages/Reports/GeneralReport";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import FormControl from "@mui/material/FormControl";
@@ -42,6 +42,9 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 const getInitialAccountId = () => {
+  // const navigate = useNavigate();
+
+  
   try {
     const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
     return user?.accountId || 1;
@@ -88,8 +91,12 @@ function Dashboard() {
     setSelectedReport(null);
   };
 
+  
   const handleReportClick = async (reportTitle) => {
-    if (reportTitle === "Non-Functional Scheme Report") {
+    if (reportTitle === "General Report") {
+      navigate('/reports/general-report'); // ✅ Now this will work
+    } 
+    else if (reportTitle === "Non-Functional Scheme Report") {
       setSelectedReport(reportTitle);
       setOpenModal(true);
       setTableLoading(true);
@@ -532,56 +539,56 @@ function Dashboard() {
 
         {/* Reports – improved boxes */}
         <Grid container spacing={3} mb={4}>
-          {[
-            { title: "General Report", desc: "View all standard device logs" },
-            { title: "Review Report", desc: "Summary of maintenance checks" },
-            { title: "Non-Functional Scheme Report", desc: "List of inactive schemes" },
-          ].map((report, index) => (
-            <Grid item xs={12} md={4} key={index}>
-              <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
-                <MDBox p={3} textAlign="center">
-                  <MDBox
-                    display="flex"
-                    justifyContent="center"
-                    alignItems="center"
-                    width="3rem"
-                    height="3rem"
-                    bgColor="info"
-                    variant="gradient"
-                    borderRadius="lg"
-                    shadow="md"
-                    mx="auto"
-                    mb={2}
-                  >
-                    <AssignmentIcon fontSize="medium" sx={{ color: "#fff" }} />
-                  </MDBox>
-                  <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
-                    {report.title}
-                  </MDTypography>
-                  <MDTypography
-                    variant="button"
-                    color="text"
-                    fontWeight="regular"
-                    mb={2}
-                    display="block"
-                  >
-                    {report.desc}
-                  </MDTypography>
-                  <Divider sx={{ mb: 2 }} />
-                  <MDButton
-                    variant="outlined"
-                    color="info"
-                    size="small"
-                    startIcon={<VisibilityIcon />}
-                    onClick={() => handleReportClick(report.title)}
-                  >
-                    View Report
-                  </MDButton>
-                </MDBox>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+  {[
+    { title: "General Report", desc: "View all standard device logs" },
+    { title: "Review Report", desc: "Summary of maintenance checks" },
+    { title: "Non-Functional Scheme Report", desc: "List of inactive schemes" },
+  ].map((report, index) => (
+    <Grid item xs={12} md={4} key={index}>
+      <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+        <MDBox p={3} textAlign="center">
+          <MDBox
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            width="3rem"
+            height="3rem"
+            bgColor="info"
+            variant="gradient"
+            borderRadius="lg"
+            shadow="md"
+            mx="auto"
+            mb={2}
+          >
+            <AssignmentIcon fontSize="medium" sx={{ color: "#fff" }} />
+          </MDBox>
+          <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
+            {report.title}
+          </MDTypography>
+          <MDTypography
+            variant="button"
+            color="text"
+            fontWeight="regular"
+            mb={2}
+            display="block"
+          >
+            {report.desc}
+          </MDTypography>
+          <Divider sx={{ mb: 2 }} />
+          <MDButton
+            variant="outlined"
+            color="info"
+            size="small"
+            startIcon={<VisibilityIcon />}
+            onClick={() => handleReportClick(report.title)}
+          >
+            View Report
+          </MDButton>
+        </MDBox>
+      </Card>
+    </Grid>
+  ))}
+</Grid>
 
         {/* Modal/Popup */}
         <Dialog
