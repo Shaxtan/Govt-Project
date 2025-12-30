@@ -3,11 +3,17 @@ import authHeader from "./auth-header";
 import { callAlert } from "./CommonService";
 
 const SERVICES = {
-  main: process.env.REACT_APP_BASE_URL + ":8070",
-  mainn: process.env.REACT_APP_BASE_URL + ":8071",
-  report: process.env.REACT_APP_BASE_URL + ":8075",
-  dashboard: process.env.REACT_APP_BASE_URL + ":8075", // Dashboard API base URL
+  main: process.env.REACT_APP_BASE_URL + "/users",
+  mainn: process.env.REACT_APP_BASE_URL + "/accounts",
+  report: process.env.REACT_APP_BASE_URL + "/usage",
+  dashboard: process.env.REACT_APP_BASE_URL + "/alerts", // Dashboard API base URL
 };
+// const SERVICES = {
+//   main: process.env.REACT_APP_BASE_URL + ":8070",
+//   mainn: process.env.REACT_APP_BASE_URL + ":8071",
+//   report: process.env.REACT_APP_BASE_URL + ":8075",
+//   dashboard: process.env.REACT_APP_BASE_URL + ":8075", // Dashboard API base URL
+// };
 
 axios.interceptors.response.use(
   (response) => {
