@@ -109,6 +109,8 @@ function Projects({ accountId, reportData = [] }) {
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
@@ -116,28 +118,44 @@ function Projects({ accountId, reportData = [] }) {
   // -------- DATA FILTERING & MAPPING --------
 
   const { filteredRows } = useMemo(() => {
-    const matchesSearch = (item) => {
-      if (!searchTerm) return true;
-      const term = searchTerm.toLowerCase();
-      return (
-        String(item.id || "")
-          .toLowerCase()
-          .includes(term) ||
-        String(item.accId || "")
-          .toLowerCase()
-          .includes(term)
-      );
-    };
+    const rows = reportData
+      .filter((item) => {
+        // 1. Search Filter
+        const term = searchTerm.toLowerCase();
+        const matchesSearch =
+          !searchTerm ||
+          String(item.id || "")
+            .toLowerCase()
+            .includes(term) ||
+          String(item.accId || "")
+            .toLowerCase()
+            .includes(term);
 
-    const rows = reportData.filter(matchesSearch).map((item) => ({
-      id: <DataCell text={item.id} fontWeight="bold" />,
-      accId: <DataCell text={item.accId} />,
-      cts: <DataCell text={item.cts ? new Date(item.cts).toLocaleString() : "N/A"} />,
-      address: <AddressCell item={{ address: item.address }} />,
-    }));
+        // 2. Date Range Filter
+        let matchesDate = true;
+        if (item.cts) {
+          const itemDate = new Date(item.cts).getTime();
+          if (fromDate) {
+            const start = new Date(fromDate).setHours(0, 0, 0, 0);
+            if (itemDate < start) matchesDate = false;
+          }
+          if (toDate) {
+            const end = new Date(toDate).setHours(23, 59, 59, 999);
+            if (itemDate > end) matchesDate = false;
+          }
+        }
+
+        return matchesSearch && matchesDate;
+      })
+      .map((item) => ({
+        id: <DataCell text={item.id} fontWeight="bold" />,
+        accId: <DataCell text={item.accId} />,
+        cts: <DataCell text={item.cts ? new Date(item.cts).toLocaleString() : "N/A"} />,
+        address: <AddressCell item={{ address: item.address }} />,
+      }));
 
     return { filteredRows: rows };
-  }, [reportData, searchTerm]);
+  }, [reportData, searchTerm, fromDate, toDate]);
 
   // -------- EXPORT LOGIC --------
 
@@ -164,32 +182,57 @@ function Projects({ accountId, reportData = [] }) {
 
   return (
     <MDBox>
-      {/* HEADER SECTION */}
       <Card sx={{ mb: 2 }}>
-        <MDBox p={2} display="flex" justifyContent="space-between" alignItems="center">
-          <MDBox>
-            <MDTypography variant="h5" fontWeight="medium">
-              IoT Device Dashboard
-            </MDTypography>
-            <MDTypography variant="button" color="text">
-              {filteredRows.length} total devices
-            </MDTypography>
+        <MDBox p={2} display="flex" flexDirection="column" gap={2}>
+          {/* Top Row: Title and Total */}
+          <MDBox display="flex" justifyContent="space-between" alignItems="center">
+            <MDBox>
+              <MDTypography variant="h5" fontWeight="medium">
+                IoT Device Dashboard
+              </MDTypography>
+              <MDTypography variant="button" color="text">
+                {filteredRows.length} matches found
+              </MDTypography>
+            </MDBox>
+
+            <MDBox display="flex" gap={1}>
+              <IconButton onClick={openMenu}>
+                <Icon>more_vert</Icon>
+              </IconButton>
+              <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
+                <MenuItem onClick={() => handleExportData("csv")}>Export CSV</MenuItem>
+                <MenuItem onClick={() => handleExportData("excel")}>Export Excel</MenuItem>
+                <MenuItem onClick={() => handleExportData("pdf")}>Export PDF</MenuItem>
+              </Menu>
+            </MDBox>
           </MDBox>
 
-          <MDBox display="flex" gap={2} alignItems="center">
+          {/* Bottom Row: Search and Date Selectors */}
+          <MDBox display="flex" flexWrap="wrap" gap={2} alignItems="center">
             <TextField
               size="small"
-              variant="outlined"
-              placeholder="Search IMEI/ID..."
+              label="Search IMEI"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Icon>search</Icon>
-                  </InputAdornment>
-                ),
-              }}
+              sx={{ flexGrow: 1, minWidth: "200px" }}
+            />
+
+            <TextField
+              label="From"
+              type="date"
+              size="small"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+              label="To"
+              type="date"
+              size="small"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
             />
 
             <FormControl variant="outlined" size="small" sx={{ minWidth: 90 }}>
@@ -205,19 +248,9 @@ function Projects({ accountId, reportData = [] }) {
                 ))}
               </Select>
             </FormControl>
-
-            <IconButton onClick={openMenu}>
-              <Icon>more_vert</Icon>
-            </IconButton>
-            <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
-              <MenuItem onClick={() => handleExportData("csv")}>Export CSV</MenuItem>
-              <MenuItem onClick={() => handleExportData("excel")}>Export Excel</MenuItem>
-              <MenuItem onClick={() => handleExportData("pdf")}>Export PDF</MenuItem>
-            </Menu>
           </MDBox>
         </MDBox>
       </Card>
-
       {/* TABLE SECTION */}
       <MDBox sx={scrollContainerSx}>
         <Card sx={stickyCardSx(10)}>

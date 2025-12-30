@@ -1,4 +1,3 @@
-// GeneralReport.jsx
 import React, { useState } from "react";
 
 // Components
@@ -29,7 +28,6 @@ import Paper from "@mui/material/Paper";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import tap from "../../assets/images/icons/flags/tap.png";
 
 // CSS
 import "./GeneralReport.css";
@@ -37,12 +35,25 @@ import "./GeneralReport.css";
 // Services
 import ApiService from "../../services/ApiService";
 
-// Custom tap icon for markers
-const TapIcon = L.icon({
-  iconUrl: tap,
-  iconSize: [62, 62],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -28],
+// --- Custom Icons ---
+const GreenIcon = L.icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const RedIcon = L.icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 });
 
 function GeneralReport() {
@@ -57,6 +68,7 @@ function GeneralReport() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [reportData, setReportData] = useState([]);
+  const [mapMarkers, setMapMarkers] = useState([]); // State for MapView API
 
   // Mock Data for Dropdowns
   const areas = [
@@ -87,9 +99,22 @@ function GeneralReport() {
       const startTime = `${fromDate} 00:00:00`;
       const endTime = `${toDate} 23:59:59`;
 
-      const response = await ApiService.getGeneralReport(accId, startTime, endTime);
+      // 1. Fetch General Report Table Data
+      const reportResponse = await ApiService.getGeneralReport(accId, startTime, endTime);
+      setReportData(reportResponse);
 
-      setReportData(response);
+      // 2. Fetch Map View Data (Integrated from ApiService)
+      await ApiService.getMapViewData(
+        {},
+        (res) => {
+          if (res?.data?.resultCode === 1) {
+            setMapMarkers(res.data.data || []);
+          }
+        },
+        true,
+        accId
+      );
+
       setOpen(true);
     } catch (error) {
       console.error("Search failed:", error);
@@ -109,18 +134,14 @@ function GeneralReport() {
               <MDBox p={3}>
                 <form onSubmit={handleSearch}>
                   <Grid container spacing={3}>
+                    {/* ... (Existing Area/Panchayat/Ward Selects) ... */}
                     <Grid item xs={12} md={4}>
-                      <FormControl
-                        variant="outlined"
-                        fullWidth
-                        className="gr-input-root"
-                      >
+                      <FormControl variant="outlined" fullWidth className="gr-input-root">
                         <InputLabel>Select Area</InputLabel>
                         <Select
                           value={area}
                           label="Select Area"
                           onChange={(e) => setArea(e.target.value)}
-                          className="gr-select"
                         >
                           {areas.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
@@ -130,19 +151,13 @@ function GeneralReport() {
                         </Select>
                       </FormControl>
                     </Grid>
-
                     <Grid item xs={12} md={4}>
-                      <FormControl
-                        variant="outlined"
-                        fullWidth
-                        className="gr-input-root"
-                      >
+                      <FormControl variant="outlined" fullWidth className="gr-input-root">
                         <InputLabel>Select Panchayat</InputLabel>
                         <Select
                           value={panchayat}
                           label="Select Panchayat"
                           onChange={(e) => setPanchayat(e.target.value)}
-                          className="gr-select"
                         >
                           {panchayats.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
@@ -152,19 +167,13 @@ function GeneralReport() {
                         </Select>
                       </FormControl>
                     </Grid>
-
                     <Grid item xs={12} md={4}>
-                      <FormControl
-                        variant="outlined"
-                        fullWidth
-                        className="gr-input-root"
-                      >
+                      <FormControl variant="outlined" fullWidth className="gr-input-root">
                         <InputLabel>Select Ward</InputLabel>
                         <Select
                           value={ward}
                           label="Select Ward"
                           onChange={(e) => setWard(e.target.value)}
-                          className="gr-select"
                         >
                           {wards.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
@@ -174,7 +183,6 @@ function GeneralReport() {
                         </Select>
                       </FormControl>
                     </Grid>
-
                     <Grid item xs={12} md={4}>
                       <TextField
                         label="From Date"
@@ -182,11 +190,9 @@ function GeneralReport() {
                         fullWidth
                         value={fromDate}
                         onChange={(e) => setFromDate(e.target.value)}
-                        className="gr-input-root"
                         InputLabelProps={{ shrink: true }}
                       />
                     </Grid>
-
                     <Grid item xs={12} md={4}>
                       <TextField
                         label="To Date"
@@ -194,11 +200,9 @@ function GeneralReport() {
                         fullWidth
                         value={toDate}
                         onChange={(e) => setToDate(e.target.value)}
-                        className="gr-input-root"
                         InputLabelProps={{ shrink: true }}
                       />
                     </Grid>
-
                     <Grid item xs={12} md={4} display="flex" alignItems="center">
                       <MDButton
                         type="submit"
@@ -221,40 +225,32 @@ function GeneralReport() {
             <Card>
               <MDBox p={2}>
                 <MDTypography variant="h6" fontWeight="medium" mb={2}>
-                  Location View
+                  Live Vehicle Status View
                 </MDTypography>
                 <div className="gr-map-wrapper">
-                  <MapContainer
-                    center={[20.5937, 78.9629]}
-                    zoom={5}
-                    className="gr-map-container"
-                  >
+                  <MapContainer center={[20.5937, 78.9629]} zoom={5} className="gr-map-container">
                     <TileLayer
                       attribution="&copy; OpenStreetMap contributors"
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                    {reportData.map(
-                      (row) =>
-                        row.startTime?.latitude && (
-                          <Marker
-                            key={row.id}
-                            position={[
-                              row.startTime.latitude,
-                              row.startTime.longitude,
-                            ]}
-                            icon={TapIcon}
-                          >
-                            <Popup>
-                              <strong>{row.meta?.name}</strong>
-                              <br />
-                              Qty: {row.description?.qty}
-                              <br />
-                              Start:{" "}
-                              {new Date(row.startTime.date).toLocaleString()}
-                            </Popup>
-                          </Marker>
-                        )
-                    )}
+                    {mapMarkers.map((vehicle) => (
+                      <Marker
+                        key={vehicle.imei}
+                        position={[vehicle.lat, vehicle.lng]}
+                        // Conditional Color based on 'ign'
+                        icon={vehicle.ign === "Y" ? GreenIcon : RedIcon}
+                      >
+                        <Popup>
+                          <strong>{vehicle.name || vehicle.vehnum}</strong>
+                          <br />
+                          <b>Ignition:</b> {vehicle.ign === "Y" ? "ON" : "OFF"}
+                          <br />
+                          <b>Address:</b> {vehicle.address}
+                          <br />
+                          <small>Last Update: {vehicle.cts}</small>
+                        </Popup>
+                      </Marker>
+                    ))}
                   </MapContainer>
                 </div>
               </MDBox>
@@ -263,7 +259,7 @@ function GeneralReport() {
         </Grid>
       </MDBox>
 
-      {/* Result Modal - FIXED TABLE ALIGNMENT */}
+      {/* Result Modal */}
       <Modal open={open} onClose={() => setOpen(false)}>
         <MDBox className="gr-modal-box">
           <MDTypography variant="h6" mb={2}>
@@ -273,48 +269,39 @@ function GeneralReport() {
             <Table stickyHeader className="gr-table">
               <TableHead>
                 <TableRow>
-                  <TableCell className="gr-th gr-th-district">
-                    District
-                  </TableCell>
-                  <TableCell className="gr-th gr-th-panchayat">
-                    Panchayat
-                  </TableCell>
-                  <TableCell className="gr-th gr-th-ward">Ward</TableCell>
-                  <TableCell className="gr-th gr-th-name">Name</TableCell>
-                  <TableCell className="gr-th gr-th-start">Start Time</TableCell>
-                  <TableCell className="gr-th gr-th-end">End Time</TableCell>
-                  <TableCell className="gr-th gr-th-qty">Qty</TableCell>
-                  <TableCell className="gr-th gr-th-duration">
-                    Duration
-                  </TableCell>
+                  <TableCell className="gr-th">District</TableCell>
+                  <TableCell className="gr-th">Block</TableCell>
+                  <TableCell className="gr-th">Panchayat</TableCell>
+                  <TableCell className="gr-th">Ward</TableCell>
+                  <TableCell className="gr-th">Start Time</TableCell>
+                  <TableCell className="gr-th">End Time</TableCell>
+                  <TableCell className="gr-th">Qty(Litres)</TableCell>
+                  <TableCell className="gr-th">Duration</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {reportData.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="gr-td gr-td-district">
-                      {row.meta?.district || "N/A"}
-                    </TableCell>
-                    <TableCell className="gr-td gr-td-panchayat">
-                      {row.meta?.panchayat || "N/A"}
-                    </TableCell>
-                    <TableCell className="gr-td gr-td-ward">
-                      {row.meta?.ward || "N/A"}
-                    </TableCell>
-                    <TableCell className="gr-td gr-td-name">
-                      {row.meta?.name || "N/A"}
-                    </TableCell>
-                    <TableCell className="gr-td gr-td-start">
+                    <TableCell className="gr-td">{row.meta?.district || "N/A"}</TableCell>
+                    <TableCell className="gr-td">{row.meta?.block || "N/A"}</TableCell>
+                    <TableCell className="gr-td">{row.meta?.panchayat || "N/A"}</TableCell>
+                    <TableCell className="gr-td">{row.meta?.name || "N/A"}</TableCell>
+                    <TableCell className="gr-td">
                       {new Date(row.startTime?.date).toLocaleString()}
                     </TableCell>
-                    <TableCell className="gr-td gr-td-end">
+                    <TableCell className="gr-td">
                       {new Date(row.endtime?.date).toLocaleString()}
                     </TableCell>
-                    <TableCell className="gr-td gr-td-qty">
-                      {row.description?.qty || "N/A"}
-                    </TableCell>
-                    <TableCell className="gr-td gr-td-duration">
-                      {row.description?.duration || "N/A"}
+                    <TableCell className="gr-td">{row.description?.qty || "N/A"}</TableCell>
+                    <TableCell className="gr-td">
+                      {row.description?.duration
+                        ? (() => {
+                            const totalSeconds = row.description.duration;
+                            const hours = Math.floor(totalSeconds / 3600);
+                            const minutes = Math.floor((totalSeconds % 3600) / 60);
+                            return hours === 0 ? `${minutes} min` : `${hours} hr ${minutes} min`;
+                          })()
+                        : "N/A"}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -322,11 +309,7 @@ function GeneralReport() {
             </Table>
           </TableContainer>
           <MDBox mt={3} display="flex" justifyContent="flex-end">
-            <MDButton
-              onClick={() => setOpen(false)}
-              variant="gradient"
-              color="error"
-            >
+            <MDButton onClick={() => setOpen(false)} variant="gradient" color="error">
               Close
             </MDButton>
           </MDBox>
