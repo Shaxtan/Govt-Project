@@ -37,9 +37,7 @@ import ApiService from "../../services/ApiService";
 
 // --- Custom Icons ---
 const GreenIcon = L.icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+  iconUrl: "/iconss/open.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -47,9 +45,7 @@ const GreenIcon = L.icon({
 });
 
 const RedIcon = L.icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+  iconUrl: "/iconss/closed.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -58,9 +54,9 @@ const RedIcon = L.icon({
 
 function GeneralReport() {
   // Filter States
-  const [area, setArea] = useState("");
+  const [district, setDistrict] = useState("");
+  const [block, setBlock] = useState("");
   const [panchayat, setPanchayat] = useState("");
-  const [ward, setWard] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
@@ -71,17 +67,17 @@ function GeneralReport() {
   const [mapMarkers, setMapMarkers] = useState([]); // State for live vehicle markers
 
   // Mock Data for Dropdowns
-  const areas = [
+  const districts = [
     { id: 1, name: "North Region" },
     { id: 2, name: "South Region" },
+  ];
+  const blocks = [
+    { id: 1, name: "Block A" },
+    { id: 2, name: "Block B" },
   ];
   const panchayats = [
     { id: 1, name: "Panchayat A" },
     { id: 2, name: "Panchayat B" },
-  ];
-  const wards = [
-    { id: 1, name: "Ward 01" },
-    { id: 2, name: "Ward 02" },
   ];
 
   // Reusable function to fetch map data
@@ -159,15 +155,43 @@ function GeneralReport() {
                     <Grid item xs={12} md={4}>
                       <MDBox mb={1} ml={0.5}>
                         <MDTypography variant="caption" fontWeight="bold">
-                          SELECT AREA
+                          SELECT DISTRICT
                         </MDTypography>
                       </MDBox>
                       <FormControl variant="outlined" fullWidth className="gr-input-root">
-                        <Select value={area} onChange={(e) => setArea(e.target.value)} displayEmpty>
+                        <Select
+                          value={district}
+                          onChange={(e) => setDistrict(e.target.value)}
+                          displayEmpty
+                        >
                           <MenuItem value="" disabled>
-                            Select Area
+                            Select District
                           </MenuItem>
-                          {areas.map((item) => (
+                          {districts.map((item) => (
+                            <MenuItem key={item.id} value={item.id}>
+                              {item.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+
+                    <Grid item xs={12} md={4}>
+                      <MDBox mb={1} ml={0.5}>
+                        <MDTypography variant="caption" fontWeight="bold">
+                          SELECT BLOCK
+                        </MDTypography>
+                      </MDBox>
+                      <FormControl variant="outlined" fullWidth className="gr-input-root">
+                        <Select
+                          value={block}
+                          onChange={(e) => setBlock(e.target.value)}
+                          displayEmpty
+                        >
+                          <MenuItem value="" disabled>
+                            Select Block
+                          </MenuItem>
+                          {blocks.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
                               {item.name}
                             </MenuItem>
@@ -192,26 +216,6 @@ function GeneralReport() {
                             Select Panchayat
                           </MenuItem>
                           {panchayats.map((item) => (
-                            <MenuItem key={item.id} value={item.id}>
-                              {item.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-
-                    <Grid item xs={12} md={4}>
-                      <MDBox mb={1} ml={0.5}>
-                        <MDTypography variant="caption" fontWeight="bold">
-                          SELECT WARD
-                        </MDTypography>
-                      </MDBox>
-                      <FormControl variant="outlined" fullWidth className="gr-input-root">
-                        <Select value={ward} onChange={(e) => setWard(e.target.value)} displayEmpty>
-                          <MenuItem value="" disabled>
-                            Select Ward
-                          </MenuItem>
-                          {wards.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
                               {item.name}
                             </MenuItem>

@@ -44,7 +44,6 @@ import IconButton from "@mui/material/IconButton";
 const getInitialAccountId = () => {
   // const navigate = useNavigate();
 
-  
   try {
     const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
     return user?.accountId || 1;
@@ -91,12 +90,10 @@ function Dashboard() {
     setSelectedReport(null);
   };
 
-  
   const handleReportClick = async (reportTitle) => {
     if (reportTitle === "General Report") {
-      navigate('/reports/general-report'); // ✅ Now this will work
-    } 
-    else if (reportTitle === "Non-Functional Scheme Report") {
+      navigate("/reports/general-report"); // ✅ Now this will work
+    } else if (reportTitle === "Non-Functional Scheme Report") {
       setSelectedReport(reportTitle);
       setOpenModal(true);
       setTableLoading(true);
@@ -149,9 +146,9 @@ function Dashboard() {
 
   // Filter state
   const [filterData, setFilterData] = useState({
-    area: "",
+    district: "",
+    block: "",
     panchayat: "",
-    ward: "",
   });
 
   // IoT stats (replace static values with API data when ready)
@@ -375,21 +372,42 @@ function Dashboard() {
               <Grid item xs={12} md={3}>
                 <MDBox mb={1} ml={0.5}>
                   <MDTypography variant="caption" fontWeight="bold">
-                    SELECT AREA
+                    SELECT DISTRICT
                   </MDTypography>
                 </MDBox>
                 <FormControl fullWidth variant="outlined" size="small">
                   <Select
-                    name="area"
-                    value={filterData.area}
+                    name="district"
+                    value={filterData.district}
                     onChange={handleFilterChange}
                     displayEmpty
                   >
                     <MenuItem value="" disabled>
-                      Select Area
+                      Select District
                     </MenuItem>
                     <MenuItem value="urban">Urban</MenuItem>
                     <MenuItem value="rural">Rural</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <MDBox mb={1} ml={0.5}>
+                  <MDTypography variant="caption" fontWeight="bold">
+                    SELECT BLOCK
+                  </MDTypography>
+                </MDBox>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <Select
+                    name="block"
+                    value={filterData.block}
+                    onChange={handleFilterChange}
+                    displayEmpty
+                  >
+                    <MenuItem value="" disabled>
+                      Select Block
+                    </MenuItem>
+                    <MenuItem value="p1">Block 01</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -410,28 +428,7 @@ function Dashboard() {
                     <MenuItem value="" disabled>
                       Select Panchayat
                     </MenuItem>
-                    <MenuItem value="p1">Panchayat 01</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} md={3}>
-                <MDBox mb={1} ml={0.5}>
-                  <MDTypography variant="caption" fontWeight="bold">
-                    SELECT WARD
-                  </MDTypography>
-                </MDBox>
-                <FormControl fullWidth variant="outlined" size="small">
-                  <Select
-                    name="ward"
-                    value={filterData.ward}
-                    onChange={handleFilterChange}
-                    displayEmpty
-                  >
-                    <MenuItem value="" disabled>
-                      Select Ward
-                    </MenuItem>
-                    <MenuItem value="w1">Ward 01</MenuItem>
+                    <MenuItem value="w1">Panchayat 01</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -539,56 +536,56 @@ function Dashboard() {
 
         {/* Reports – improved boxes */}
         <Grid container spacing={3} mb={4}>
-  {[
-    { title: "General Report", desc: "View all standard device logs" },
-    { title: "Review Report", desc: "Summary of maintenance checks" },
-    { title: "Non-Functional Scheme Report", desc: "List of inactive schemes" },
-  ].map((report, index) => (
-    <Grid item xs={12} md={4} key={index}>
-      <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
-        <MDBox p={3} textAlign="center">
-          <MDBox
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            width="3rem"
-            height="3rem"
-            bgColor="info"
-            variant="gradient"
-            borderRadius="lg"
-            shadow="md"
-            mx="auto"
-            mb={2}
-          >
-            <AssignmentIcon fontSize="medium" sx={{ color: "#fff" }} />
-          </MDBox>
-          <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
-            {report.title}
-          </MDTypography>
-          <MDTypography
-            variant="button"
-            color="text"
-            fontWeight="regular"
-            mb={2}
-            display="block"
-          >
-            {report.desc}
-          </MDTypography>
-          <Divider sx={{ mb: 2 }} />
-          <MDButton
-            variant="outlined"
-            color="info"
-            size="small"
-            startIcon={<VisibilityIcon />}
-            onClick={() => handleReportClick(report.title)}
-          >
-            View Report
-          </MDButton>
-        </MDBox>
-      </Card>
-    </Grid>
-  ))}
-</Grid>
+          {[
+            { title: "General Report", desc: "View all standard device logs" },
+            { title: "Review Report", desc: "Summary of maintenance checks" },
+            { title: "Non-Functional Scheme Report", desc: "List of inactive schemes" },
+          ].map((report, index) => (
+            <Grid item xs={12} md={4} key={index}>
+              <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+                <MDBox p={3} textAlign="center">
+                  <MDBox
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    width="3rem"
+                    height="3rem"
+                    bgColor="info"
+                    variant="gradient"
+                    borderRadius="lg"
+                    shadow="md"
+                    mx="auto"
+                    mb={2}
+                  >
+                    <AssignmentIcon fontSize="medium" sx={{ color: "#fff" }} />
+                  </MDBox>
+                  <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
+                    {report.title}
+                  </MDTypography>
+                  <MDTypography
+                    variant="button"
+                    color="text"
+                    fontWeight="regular"
+                    mb={2}
+                    display="block"
+                  >
+                    {report.desc}
+                  </MDTypography>
+                  <Divider sx={{ mb: 2 }} />
+                  <MDButton
+                    variant="outlined"
+                    color="info"
+                    size="small"
+                    startIcon={<VisibilityIcon />}
+                    onClick={() => handleReportClick(report.title)}
+                  >
+                    View Report
+                  </MDButton>
+                </MDBox>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
 
         {/* Modal/Popup */}
         <Dialog
