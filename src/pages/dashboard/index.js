@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import ApiService from "services/ApiService";
 import { useNavigate } from "react-router-dom";
-// import Projects from "./components/DashboardTable";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CloudOffIcon from "@mui/icons-material/CloudOff";
 import DevicesIcon from "@mui/icons-material/Devices";
@@ -12,7 +11,6 @@ import StopIcon from "@mui/icons-material/Stop";
 import SearchIcon from "@mui/icons-material/Search";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import GeneralReport from "pages/Reports/GeneralReport";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import FormControl from "@mui/material/FormControl";
@@ -28,22 +26,16 @@ import MDButton from "../../../src/assets/components/MDButton";
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardNavbar";
 import Footer from "../../assets/components/examples/Footer";
-import ComplexStatisticsCard from "../../assets/components/examples/Cards/StatisticsCards/ComplexStatisticsCard";
-import PieChart from "../../assets/components/examples/Charts/PieChart";
-
 import Projects from "./components/DashboardTable";
 import Chatbot from "./Chatbot";
 import AlertModal from "../Modals/Modal";
 import CloseIcon from "@mui/icons-material/Close";
-// import AssignmentIcon from '@mui/icons-material/Assignment';
-// import VisibilityIcon from '@mui/icons-material/Visibility';
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
-const getInitialAccountId = () => {
-  // const navigate = useNavigate();
 
+const getInitialAccountId = () => {
   try {
     const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
     return user?.accountId || 1;
@@ -52,19 +44,33 @@ const getInitialAccountId = () => {
   }
 };
 
+const getUserType = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+    return user?.type || ""; // DIST, BLK, or PNCH
+  } catch {
+    return "";
+  }
+};
+
 function Dashboard() {
   const navigate = useNavigate();
   const projectsRef = useRef(null);
 
   const [alertModalOpen, setAlertModalOpen] = useState(false);
-  const [totalDevices, setTotalDevices] = useState(0);
-  const [onlineDevices, setOnlineDevices] = useState(0);
-  const [offlineDevices, setOfflineDevices] = useState(0);
   const [devices, setDevices] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
-  const [vtsData, setVtsData] = useState([]); // To store the API response
-  const [tableLoading, setTableLoading] = useState(false); // To handle loading state
+  const [userRole, setUserRole] = useState(getUserType());
+
+  const [dropdownData, setDropdownData] = useState({
+    districts: [],
+    blocks: [],
+    panchayats: [],
+  });
+
+  const [vtsData, setVtsData] = useState([]);
+  const [tableLoading, setTableLoading] = useState(false);
 
   const [summaryData, setSummaryData] = useState({
     total: 0,
@@ -80,6 +86,12 @@ function Dashboard() {
   const [openModal, setOpenModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
 
+  const [filterData, setFilterData] = useState({
+    district: "",
+    block: "",
+    panchayat: "",
+  });
+
   const handleOpenModal = (reportTitle) => {
     setSelectedReport(reportTitle);
     setOpenModal(true);
@@ -90,94 +102,38 @@ function Dashboard() {
     setSelectedReport(null);
   };
 
-  const handleReportClick = async (reportTitle) => {
-    if (reportTitle === "General Report") {
-      navigate("/reports/general-report"); // ✅ Now this will work
-    } else if (reportTitle === "Non-Functional Scheme Report") {
-      setSelectedReport(reportTitle);
-      setOpenModal(true);
-      setTableLoading(true);
+  const fetchAccounts = () => {
+    ApiService.getAccountDropdown((res) => {
+      // Logic Fix: Ensure we are accessing the correct data path and property names
+      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+        const allAccounts = res.data.data;
+        setAccounts(allAccounts);
 
-      try {
-        // Calculate dates (Last 30 days)
-        const end = new Date().toISOString().slice(0, 19).replace("T", " ");
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 30);
-        const start = startDate.toISOString().slice(0, 19).replace("T", " ");
-
-        // Call the API
-        const reportData = await ApiService.getNonFunctionalReport(selectedAccountId, start, end);
-        setVtsData(reportData); // Store the data for the table
-      } catch (error) {
-        console.error("Failed to load report", error);
-      } finally {
-        setTableLoading(false);
+        setDropdownData({
+          districts: allAccounts.filter((item) => item.type === "DIST"),
+          blocks: allAccounts.filter((item) => item.type === "BLK"),
+          panchayats: allAccounts.filter((item) => item.type === "PNCH"),
+        });
       }
-    } else if (reportTitle === "Review Report") {
-      handleOpenModal(reportTitle);
-    }
+    });
   };
 
-  const handleViewReport = async () => {
-    setIsTableModalOpen(true);
-    setTableLoading(true);
-
-    try {
-      // Calculate dates for the API (last 30 days based on current time)
-      const end = new Date().toISOString().slice(0, 19).replace("T", " ");
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30);
-      const start = startDate.toISOString().slice(0, 19).replace("T", " ");
-
-      const reportData = await ApiService.getNonFunctionalReport(
-        selectedAccountId || 1,
-        start,
-        end
-      );
-
-      // Pass this data to your state that the Projects component will consume
-      setVtsData(reportData);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setTableLoading(false);
-    }
-  };
-
-  // Filter state
-  const [filterData, setFilterData] = useState({
-    district: "",
-    block: "",
-    panchayat: "",
-  });
-
-  // IoT stats (replace static values with API data when ready)
-  const iotStats = {
-    totalToInstall: 1200,
-    totalInstalled: 950,
-    totalFunctional: 910,
-    totalNonFunctional: 40,
-  };
-
-  const scrollToProjects = () => {
-    if (projectsRef.current) {
-      projectsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
-
-  const handleOpenAlertModal = (type = null) => {
-    setSelectedAlertType(type);
-    setAlertModalOpen(true);
-  };
-
-  const filteredAlertData = useMemo(() => {
-    if (!selectedAlertType) return alertApiData.data;
-    return alertApiData.data.filter((alert) => alert.type === selectedAlertType);
-  }, [alertApiData.data, selectedAlertType]);
-
-  const handleCloseAlertModal = () => {
-    setAlertModalOpen(false);
-  };
+  const fetchDashboardData = useCallback((accountId, isManual = false) => {
+    if (isManual) setIsRefreshing(true);
+    ApiService.getYesterdaySummary(accountId, (res) => {
+      if (res?.data?.resultCode === 1 && res?.data?.data) {
+        const apiData = res.data.data;
+        setSummaryData({
+          total: apiData.total || 0,
+          functional: apiData.functional || 0,
+          nonFunctional: apiData.nonFunctional || 0,
+          notInstalled: apiData.notInstalled || 0,
+        });
+        setLastRefreshTime(Date.now());
+      }
+      if (isManual) setIsRefreshing(false);
+    });
+  }, []);
 
   const fetchAlertsData = useCallback((accountId) => {
     ApiService.getDbAlerts(accountId, (res) => {
@@ -186,34 +142,6 @@ function Dashboard() {
       }
     });
   }, []);
-
-  const fetchDashboardData = useCallback((accountId, isManual = false) => {
-    if (isManual) setIsRefreshing(true);
-
-    ApiService.getYesterdaySummary(accountId, (res) => {
-      if (res?.data?.resultCode === 1 && res?.data?.data) {
-        const apiData = res.data.data;
-
-        setSummaryData({
-          total: apiData.total || 0,
-          functional: apiData.functional || 0,
-          nonFunctional: apiData.nonFunctional || 0,
-          notInstalled: apiData.notInstalled || 0,
-        });
-
-        setLastRefreshTime(Date.now());
-      }
-      if (isManual) setIsRefreshing(false);
-    });
-  }, []);
-
-  const fetchAccounts = () => {
-    ApiService.getAccountDropdown((res) => {
-      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-        setAccounts(res.data.data);
-      }
-    });
-  };
 
   useEffect(() => {
     fetchAccounts();
@@ -238,8 +166,47 @@ function Dashboard() {
   };
 
   const handleSearch = () => {
-    // Plug your API call here using filterData.area, filterData.panchayat, filterData.ward
+    const targetAccountId =
+      filterData.panchayat || filterData.block || filterData.district || selectedAccountId;
+    console.log("Searching for Account ID:", targetAccountId);
+    fetchDashboardData(targetAccountId);
+    fetchAlertsData(targetAccountId);
   };
+
+  const handleReportClick = async (reportTitle) => {
+    if (reportTitle === "General Report") {
+      navigate("/reports/general-report");
+    } else if (reportTitle === "Non-Functional Scheme Report") {
+      handleOpenModal(reportTitle);
+      setTableLoading(true);
+      try {
+        const end = new Date().toISOString().slice(0, 19).replace("T", " ");
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        const start = startDate.toISOString().slice(0, 19).replace("T", " ");
+
+        const accIdForReport =
+          filterData.panchayat || filterData.block || filterData.district || selectedAccountId;
+
+        const reportData = await ApiService.getNonFunctionalReport(accIdForReport, start, end);
+        setVtsData(reportData);
+      } catch (error) {
+        console.error("Failed to load report", error);
+      } finally {
+        setTableLoading(false);
+      }
+    } else if (reportTitle === "Review Report") {
+      handleOpenModal(reportTitle);
+    }
+  };
+
+  const handleCloseAlertModal = () => setAlertModalOpen(false);
+
+  const filteredAlertData = useMemo(() => {
+    if (!selectedAlertType) return alertApiData.data;
+    return alertApiData.data.filter((alert) => alert.type === selectedAlertType);
+  }, [alertApiData.data, selectedAlertType]);
+
   return (
     <DashboardLayout>
       <DashboardNavbar
@@ -257,36 +224,19 @@ function Dashboard() {
       <MDBox py={3} pt={1} pb={1} />
 
       <MDBox py={0}>
-        {/* NEW: Alerts box with horizontal scroll */}
+        {/* Alerts Section */}
         <Card sx={{ mb: 3, boxShadow: 3, borderRadius: 2 }}>
           <MDBox p={2} display="flex" justifyContent="space-between" alignItems="center">
             <MDTypography variant="h6" fontWeight="medium">
               Alerts
             </MDTypography>
-            {/* Optional: total count */}
             <MDTypography variant="caption" color="text">
               {filteredAlertData?.length || 0} alerts
             </MDTypography>
           </MDBox>
           <Divider />
-
-          <MDBox
-            px={2}
-            py={2}
-            sx={{
-              display: "flex",
-              gap: 2,
-              overflowX: "auto",
-              "&::-webkit-scrollbar": {
-                height: 6,
-              },
-              "&::-webkit-scrollbar-thumb": {
-                backgroundColor: "#c1c1c1",
-                borderRadius: 3,
-              },
-            }}
-          >
-            {filteredAlertData && filteredAlertData.length > 0 ? (
+          <MDBox px={2} py={2} sx={{ display: "flex", gap: 2, overflowX: "auto" }}>
+            {filteredAlertData?.length > 0 ? (
               filteredAlertData.map((alert, idx) => (
                 <Card
                   key={idx}
@@ -328,7 +278,6 @@ function Dashboard() {
                     >
                       {alert.message || alert.description || "No description available."}
                     </MDTypography>
-
                     <MDBox
                       mt={1.5}
                       display="flex"
@@ -356,7 +305,7 @@ function Dashboard() {
                 </Card>
               ))
             ) : (
-              <MDBox width="100%" display="flex" justifyContent="center" alignItems="center" py={2}>
+              <MDBox width="100%" display="flex" justifyContent="center" py={2}>
                 <MDTypography variant="caption" color="text">
                   No alerts available.
                 </MDTypography>
@@ -365,7 +314,7 @@ function Dashboard() {
           </MDBox>
         </Card>
 
-        {/* Filters card */}
+        {/* Updated Hierarchical Filters */}
         <Card sx={{ mb: 4, p: 2 }}>
           <MDBox p={2}>
             <Grid container spacing={3} alignItems="flex-end">
@@ -381,12 +330,16 @@ function Dashboard() {
                     value={filterData.district}
                     onChange={handleFilterChange}
                     displayEmpty
+                    disabled={userRole === "BLK" || userRole === "PNCH"}
                   >
                     <MenuItem value="" disabled>
                       Select District
                     </MenuItem>
-                    <MenuItem value="urban">Urban</MenuItem>
-                    <MenuItem value="rural">Rural</MenuItem>
+                    {dropdownData.districts.map((item) => (
+                      <MenuItem key={item.id} value={item.id}>
+                        {item.name}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -403,11 +356,16 @@ function Dashboard() {
                     value={filterData.block}
                     onChange={handleFilterChange}
                     displayEmpty
+                    disabled={userRole === "PNCH"}
                   >
                     <MenuItem value="" disabled>
                       Select Block
                     </MenuItem>
-                    <MenuItem value="p1">Block 01</MenuItem>
+                    {dropdownData.blocks.map((item) => (
+                      <MenuItem key={item.id} value={item.id}>
+                        {item.name}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -428,7 +386,11 @@ function Dashboard() {
                     <MenuItem value="" disabled>
                       Select Panchayat
                     </MenuItem>
-                    <MenuItem value="w1">Panchayat 01</MenuItem>
+                    {dropdownData.panchayats.map((item) => (
+                      <MenuItem key={item.id} value={item.id}>
+                        {item.name}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -448,6 +410,7 @@ function Dashboard() {
           </MDBox>
         </Card>
 
+        {/* Statistics Cards */}
         <Grid container spacing={3} mb={4}>
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
@@ -469,7 +432,6 @@ function Dashboard() {
               </MDBox>
             </Card>
           </Grid>
-
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #4CAF50" }}>
               <MDBox p={2}>
@@ -490,7 +452,6 @@ function Dashboard() {
               </MDBox>
             </Card>
           </Grid>
-
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #2196F3" }}>
               <MDBox p={2}>
@@ -511,7 +472,6 @@ function Dashboard() {
               </MDBox>
             </Card>
           </Grid>
-
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 3, borderTop: "3px solid #F44336" }}>
               <MDBox p={2}>
@@ -521,7 +481,7 @@ function Dashboard() {
                   color="text"
                   textTransform="uppercase"
                 >
-                  Pending Installation{" "}
+                  Pending Installation
                 </MDTypography>
                 <MDTypography variant="h4" fontWeight="bold" mt={1} color="error">
                   {summaryData.notInstalled.toLocaleString()}
@@ -534,7 +494,7 @@ function Dashboard() {
           </Grid>
         </Grid>
 
-        {/* Reports – improved boxes */}
+        {/* Reports Section */}
         <Grid container spacing={3} mb={4}>
           {[
             { title: "General Report", desc: "View all standard device logs" },
@@ -587,7 +547,7 @@ function Dashboard() {
           ))}
         </Grid>
 
-        {/* Modal/Popup */}
+        {/* Modal for Reports */}
         <Dialog
           open={openModal}
           onClose={handleCloseModal}
@@ -615,7 +575,6 @@ function Dashboard() {
             </IconButton>
           </DialogTitle>
           <DialogContent dividers>
-            {/* 💡 CHANGE THIS LINE: Pass the data and account ID */}
             {tableLoading ? (
               <MDBox display="flex" justifyContent="center" p={5}>
                 <MDTypography variant="h6">Loading Report Data...</MDTypography>
@@ -625,22 +584,10 @@ function Dashboard() {
             )}
           </DialogContent>
         </Dialog>
-
-        {/* Projects (if needed) */}
-        {/* <MDBox ref={projectsRef}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <MDBox sx={{ width: "100%", overflowX: "auto" }}>
-                <Projects accountId={selectedAccountId} />
-              </MDBox>
-            </Grid>
-          </Grid>
-        </MDBox> */}
       </MDBox>
 
       <Chatbot devices={devices} />
       <Footer />
-
       <AlertModal
         open={alertModalOpen}
         onClose={handleCloseAlertModal}
