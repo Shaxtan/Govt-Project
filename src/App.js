@@ -129,9 +129,10 @@ export default function App() {
   const logoStyles = miniSidenav
     ? {
         "& .MuiBox-root img": {
-          width: "32px !important",
+          marginLeft: "-25px",
+          width: "100px !important",
           height: "32px !important",
-          borderRadius: "50% !important",
+          borderRadius: "10% !important",
         },
       }
     : {
