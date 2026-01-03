@@ -11,7 +11,7 @@ import Icon from "@mui/material/Icon";
 // 💡 CORRECTED IMPORT PATH: Assuming App.js is in the 'src' directory.
 import mainLogo from "./assets/images/mainlogoo.png";
 // ⭐ NEW IMPORT: Import the small icon
-import smallIcon from "./assets/images/small-icon.jpeg";
+import smallIcon from "./assets/images/small-icon.png";
 
 // Material Dashboard 2 React components
 import MDBox from "../src/assets/components/MDBox";
@@ -126,23 +126,25 @@ export default function App() {
   // ⭐ NEW LOGIC: Determine which logo to use based on miniSidenav state
   const logo = miniSidenav ? smallIcon : mainLogo;
   // ⭐ NEW LOGIC: Adjust logo styling based on miniSidenav state
-  const logoStyles = miniSidenav
-    ? {
-        "& .MuiBox-root img": {
-          marginLeft: "-25px",
-          width: "100px !important",
-          height: "32px !important",
-          borderRadius: "10% !important",
-        },
-      }
-    : {
-        "& .MuiBox-root img": {
-          marginLeft: "-27px",
-          width: "240px !important",
-          height: "auto !important",
-          borderRadius: "5px !important",
-        },
-      };
+ const logoStyles = miniSidenav
+  ? {
+      "& .MuiBox-root img": {
+        marginLeft: "-15px !important",
+        width: "180px !important",
+        height: "52px !important",
+        borderRadius: "10% !important",
+        maxWidth: "none !important",        // ⭐ Remove max-width constraints
+        minWidth: "60px !important",       // ⭐ Force minimum width
+      },
+    }
+  : {
+      "& .MuiBox-root img": {
+        marginLeft: "-27px",
+        width: "240px !important",
+        height: "auto !important",
+        borderRadius: "5px !important",
+      },
+    };
 
   return direction === "rtl" ? (
     <CacheProvider value={rtlCache}>
