@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 // Components
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
@@ -13,7 +13,6 @@ import Card from "@mui/material/Card";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import Modal from "@mui/material/Modal";
 import Table from "@mui/material/Table";
@@ -64,40 +63,59 @@ function GeneralReport() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [reportData, setReportData] = useState([]);
-  const [mapMarkers, setMapMarkers] = useState([]); // State for live vehicle markers
+  const [mapMarkers, setMapMarkers] = useState([]);
 
-  // Mock Data for Dropdowns
-  const districts = [
-    { id: 1, name: "North Region" },
-    { id: 2, name: "South Region" },
-  ];
-  const blocks = [
-    { id: 1, name: "Block A" },
-    { id: 2, name: "Block B" },
-  ];
-  const panchayats = [
-    { id: 1, name: "Panchayat A" },
-    { id: 2, name: "Panchayat B" },
-  ];
+  // --- Dynamic Dropdown States ---
+  const [districts, setDistricts] = useState([]);
+  const [blocksByDistrict, setBlocksByDistrict] = useState({});
+  const [panchayatsByBlock, setPanchayatsByBlock] = useState({});
 
-  // Reusable function to fetch map data
+  // Get user info once for defaults
+  const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+  const mainAccId = user?.accountId || user?.accid || 1;
+
+  // --- Dynamic Fetching Logic ---
+
+  const fetchDistricts = useCallback(() => {
+    ApiService.getAccountDropdown((res) => {
+      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+        setDistricts(res.data.data.filter((item) => item.type === "DIST"));
+      }
+    });
+  }, []);
+
+  const fetchChildAccounts = useCallback((parentId, parentType) => {
+    ApiService.getChildAccountDropdown(parentId, (res) => {
+      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+        const children = res.data.data;
+        if (parentType === "DIST") {
+          setBlocksByDistrict((prev) => ({
+            ...prev,
+            [parentId]: children.filter((i) => i.type === "BLK"),
+          }));
+        } else if (parentType === "BLK") {
+          setPanchayatsByBlock((prev) => ({
+            ...prev,
+            [parentId]: children.filter((i) => i.type === "PNCH"),
+          }));
+        }
+      }
+    });
+  }, []);
+
   const fetchMapData = async () => {
     try {
-      const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
-      const accId = user?.accid || 1;
-
       await ApiService.getMapViewData(
         {},
         (res) => {
           if (res?.data?.resultCode === 1) {
             setMapMarkers(res.data.data || []);
           } else {
-            console.warn("Map data fetch failed or empty response:", res);
             setMapMarkers([]);
           }
         },
-        true, // show loader if your ApiService supports it
-        accId
+        true,
+        mainAccId
       );
     } catch (error) {
       console.error("Error fetching map data:", error);
@@ -105,11 +123,12 @@ function GeneralReport() {
     }
   };
 
-  // Load map markers when component mounts
   useEffect(() => {
+    fetchDistricts();
     fetchMapData();
-  }, []);
+  }, [fetchDistricts, mainAccId]);
 
+  // --- Search Logic ---
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!fromDate || !toDate) {
@@ -119,19 +138,14 @@ function GeneralReport() {
 
     setLoading(true);
     try {
-      const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
-      const accId = user?.accid || 1;
-
+      // Logic: Use Panchayat ID if available, else Block, else District, else Login ID
+      const targetId = panchayat || block || district || mainAccId;
       const startTime = `${fromDate} 00:00:00`;
       const endTime = `${toDate} 23:59:59`;
 
-      // 1. Fetch General Report Table Data
-      const reportResponse = await ApiService.getGeneralReport(accId, startTime, endTime);
+      const reportResponse = await ApiService.getGeneralReport(targetId, startTime, endTime);
       setReportData(reportResponse || []);
-
-      // 2. Refresh map data after search (keeps live view updated)
       await fetchMapData();
-
       setOpen(true);
     } catch (error) {
       console.error("Search failed:", error);
@@ -141,17 +155,21 @@ function GeneralReport() {
     }
   };
 
+  // Helper lists based on selection
+  const currentBlocks = district ? blocksByDistrict[district] || [] : [];
+  const currentPanchayats = block ? panchayatsByBlock[block] || [] : [];
+
   return (
     <DashboardLayout>
       <DashboardNavbar />
       <MDBox py={3}>
         <Grid container spacing={3}>
-          {/* Top Filter Box */}
           <Grid item xs={12}>
             <Card>
               <MDBox p={3}>
                 <form onSubmit={handleSearch}>
                   <Grid container spacing={3}>
+                    {/* DISTRICT */}
                     <Grid item xs={12} md={4}>
                       <MDBox mb={1} ml={0.5}>
                         <MDTypography variant="caption" fontWeight="bold">
@@ -161,7 +179,13 @@ function GeneralReport() {
                       <FormControl variant="outlined" fullWidth className="gr-input-root">
                         <Select
                           value={district}
-                          onChange={(e) => setDistrict(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDistrict(val);
+                            setBlock("");
+                            setPanchayat("");
+                            if (val) fetchChildAccounts(val, "DIST");
+                          }}
                           displayEmpty
                         >
                           <MenuItem value="" disabled>
@@ -176,6 +200,7 @@ function GeneralReport() {
                       </FormControl>
                     </Grid>
 
+                    {/* BLOCK */}
                     <Grid item xs={12} md={4}>
                       <MDBox mb={1} ml={0.5}>
                         <MDTypography variant="caption" fontWeight="bold">
@@ -185,13 +210,19 @@ function GeneralReport() {
                       <FormControl variant="outlined" fullWidth className="gr-input-root">
                         <Select
                           value={block}
-                          onChange={(e) => setBlock(e.target.value)}
+                          disabled={!district}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setBlock(val);
+                            setPanchayat("");
+                            if (val) fetchChildAccounts(val, "BLK");
+                          }}
                           displayEmpty
                         >
                           <MenuItem value="" disabled>
                             Select Block
                           </MenuItem>
-                          {blocks.map((item) => (
+                          {currentBlocks.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
                               {item.name}
                             </MenuItem>
@@ -200,6 +231,7 @@ function GeneralReport() {
                       </FormControl>
                     </Grid>
 
+                    {/* PANCHAYAT */}
                     <Grid item xs={12} md={4}>
                       <MDBox mb={1} ml={0.5}>
                         <MDTypography variant="caption" fontWeight="bold">
@@ -209,13 +241,14 @@ function GeneralReport() {
                       <FormControl variant="outlined" fullWidth className="gr-input-root">
                         <Select
                           value={panchayat}
+                          disabled={!block}
                           onChange={(e) => setPanchayat(e.target.value)}
                           displayEmpty
                         >
                           <MenuItem value="" disabled>
                             Select Panchayat
                           </MenuItem>
-                          {panchayats.map((item) => (
+                          {currentPanchayats.map((item) => (
                             <MenuItem key={item.id} value={item.id}>
                               {item.name}
                             </MenuItem>
@@ -224,6 +257,7 @@ function GeneralReport() {
                       </FormControl>
                     </Grid>
 
+                    {/* DATES */}
                     <Grid item xs={12} md={4}>
                       <TextField
                         label="From Date"
@@ -234,7 +268,6 @@ function GeneralReport() {
                         InputLabelProps={{ shrink: true }}
                       />
                     </Grid>
-
                     <Grid item xs={12} md={4}>
                       <TextField
                         label="To Date"
@@ -246,6 +279,7 @@ function GeneralReport() {
                       />
                     </Grid>
 
+                    {/* SEARCH BUTTON */}
                     <Grid item xs={12} md={4} display="flex" alignItems="center">
                       <MDButton
                         type="submit"
@@ -263,7 +297,7 @@ function GeneralReport() {
             </Card>
           </Grid>
 
-          {/* Map Section Box */}
+          {/* Map Section */}
           <Grid item xs={12}>
             <Card>
               <MDBox p={2}>
@@ -272,10 +306,7 @@ function GeneralReport() {
                 </MDTypography>
                 <div className="gr-map-wrapper">
                   <MapContainer center={[20.5937, 78.9629]} zoom={5} className="gr-map-container">
-                    <TileLayer
-                      attribution="&copy; OpenStreetMap contributors"
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     {mapMarkers.map((vehicle) => (
                       <Marker
                         key={vehicle.imei}
@@ -301,7 +332,7 @@ function GeneralReport() {
         </Grid>
       </MDBox>
 
-      {/* Result Modal */}
+      {/* Result Modal - Content logic remains exactly the same as your provided code */}
       <Modal open={open} onClose={() => setOpen(false)}>
         <MDBox className="gr-modal-box">
           <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -310,7 +341,6 @@ function GeneralReport() {
               Close
             </MDButton>
           </MDBox>
-
           <TableContainer component={Paper} className="gr-table-container">
             <Table stickyHeader className="gr-table">
               <TableHead>
@@ -359,10 +389,10 @@ function GeneralReport() {
                       <TableCell className="gr-td">
                         {row.description?.duration
                           ? (() => {
-                              const totalSeconds = row.description.duration;
-                              const hours = Math.floor(totalSeconds / 3600);
-                              const minutes = Math.floor((totalSeconds % 3600) / 60);
-                              return hours === 0 ? `${minutes} min` : `${hours} hr ${minutes} min`;
+                              const s = row.description.duration;
+                              const h = Math.floor(s / 3600);
+                              const m = Math.floor((s % 3600) / 60);
+                              return h === 0 ? `${m} min` : `${h} hr ${m} min`;
                             })()
                           : "N/A"}
                       </TableCell>
