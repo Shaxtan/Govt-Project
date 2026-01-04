@@ -47,7 +47,7 @@ const getInitialAccountId = () => {
 const getUserType = () => {
   try {
     const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
-    return user?.type || ""; // DIST, BLK, or PNCH
+    return user?.type || "";
   } catch {
     return "";
   }
@@ -63,10 +63,20 @@ function Dashboard() {
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
   const [userRole, setUserRole] = useState(getUserType());
 
+  // Hierarchical dropdown states
+  const [selectedDistrictId, setSelectedDistrictId] = useState("");
+  const [selectedBlockId, setSelectedBlockId] = useState("");
+  const [blocksByDistrict, setBlocksByDistrict] = useState({});
+  const [panchayatsByBlock, setPanchayatsByBlock] = useState({});
+  
+
   const [dropdownData, setDropdownData] = useState({
     districts: [],
     blocks: [],
     panchayats: [],
+    allAccounts: [],
+    blocksByDistrict: {},
+    panchayatsByBlock: {},
   });
 
   const [vtsData, setVtsData] = useState([]);
@@ -102,21 +112,104 @@ function Dashboard() {
     setSelectedReport(null);
   };
 
-  const fetchAccounts = () => {
-    ApiService.getAccountDropdown((res) => {
-      // Logic Fix: Ensure we are accessing the correct data path and property names
-      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-        const allAccounts = res.data.data;
-        setAccounts(allAccounts);
+  // const fetchChildAccounts = useCallback((parentId, parentType) => {
+  //   ApiService.getChildAccountDropdown(parentId, (res) => {
+  //     if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+  //       const childAccounts = res.data.data;
 
-        setDropdownData({
-          districts: allAccounts.filter((item) => item.type === "DIST"),
-          blocks: allAccounts.filter((item) => item.type === "BLK"),
-          panchayats: allAccounts.filter((item) => item.type === "PNCH"),
-        });
+  //       if (parentType === "DIST") {
+  //         setBlocksByDistrict(prev => ({
+  //           ...prev,
+  //           [parentId]: childAccounts.filter(item => item.type === "BLK")
+  //         }));
+  //         setDropdownData(prev => ({
+  //           ...prev,
+  //           blocksByDistrict: {
+  //             ...prev.blocksByDistrict,
+  //             [parentId]: childAccounts.filter(item => item.type === "BLK")
+  //           }
+  //         }));
+  //         setSelectedBlockId("");
+  //         setFilterData(prev => ({ ...prev, block: "", panchayat: "" }));
+  //       } else if (parentType === "BLK") {
+  //         setPanchayatsByBlock(prev => ({
+  //           ...prev,
+  //           [parentId]: childAccounts.filter(item => item.type === "PNCH")
+  //         }));
+  //         setDropdownData(prev => ({
+  //           ...prev,
+  //           panchayatsByBlock: {
+  //             ...prev.panchayatsByBlock,
+  //             [parentId]: childAccounts.filter(item => item.type === "PNCH")
+  //           }
+  //         }));
+  //         setFilterData(prev => ({ ...prev, panchayat: "" }));
+  //       }
+  //     }
+  //   });
+  // }, []);
+
+
+const fetchAccounts = useCallback(() => {
+  // ✅ FIXED: Only callback param
+  ApiService.getAccountDropdown((res) => {
+    if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+      const allAccounts = res.data.data;
+      const districts = allAccounts.filter((item) => item.type === "DIST");
+      
+      setDropdownData({
+        districts,
+        allAccounts,
+      });
+      setAccounts(allAccounts);
+    }
+  });
+}, []);
+
+const fetchChildAccounts = useCallback((parentId, parentType) => {
+  // ✅ FIXED: parentId + callback
+  ApiService.getChildAccountDropdown(parentId, (res) => {
+    if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+      const childAccounts = res.data.data;
+      
+      if (parentType === "DIST") {
+        const districtBlocks = childAccounts.filter(item => item.type === "BLK");
+        setBlocksByDistrict(prev => ({
+          ...prev,
+          [parentId]: districtBlocks
+        }));
+        setSelectedBlockId("");
+        setFilterData(prev => ({ ...prev, block: "", panchayat: "" }));
+      } else if (parentType === "BLK") {
+        const blockPanchayats = childAccounts.filter(item => item.type === "PNCH");
+        setPanchayatsByBlock(prev => ({
+          ...prev,
+          [parentId]: blockPanchayats
+        }));
+        setFilterData(prev => ({ ...prev, panchayat: "" }));
       }
-    });
-  };
+    }
+  });
+}, []);
+
+
+
+  // const fetchAccounts = useCallback(() => {
+  //   ApiService.getAccountDropdown(true, (res) => {
+  //     if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+  //       const allAccounts = res.data.data;
+  //       const districts = allAccounts.filter((item) => item.type === "DIST");
+
+  //       setDropdownData({
+  //         districts,
+  //         allAccounts,
+  //         blocksByDistrict: {},
+  //         panchayatsByBlock: {},
+  //       });
+  //       setAccounts(allAccounts);
+  //     }
+  //   });
+  // }, []);
 
   const fetchDashboardData = useCallback((accountId, isManual = false) => {
     if (isManual) setIsRefreshing(true);
@@ -145,6 +238,21 @@ function Dashboard() {
 
   useEffect(() => {
     fetchAccounts();
+
+    // Auto-select based on user role
+    if (userRole === "DIST" || userRole === "BLK" || userRole === "PNCH") {
+      setFilterData(prev => ({ ...prev, district: selectedAccountId }));
+      setSelectedDistrictId(selectedAccountId);
+
+      if (userRole === "BLK") {
+        setFilterData(prev => ({ ...prev, block: selectedAccountId }));
+        setSelectedBlockId(selectedAccountId);
+        fetchChildAccounts(selectedAccountId, "BLK");
+      } else if (userRole === "PNCH") {
+        setFilterData(prev => ({ ...prev, panchayat: selectedAccountId }));
+      }
+    }
+
     fetchDashboardData(selectedAccountId);
     fetchAlertsData(selectedAccountId);
 
@@ -154,24 +262,42 @@ function Dashboard() {
     }, 5 * 60 * 1000);
 
     return () => clearInterval(intervalId);
-  }, [selectedAccountId, fetchDashboardData, fetchAlertsData]);
+  }, [selectedAccountId, userRole, fetchDashboardData, fetchAlertsData, fetchChildAccounts]);
 
   const handleAccountChange = (event) => {
     setSelectedAccountId(event.target.value);
   };
 
-  const handleFilterChange = (event) => {
+  const handleFilterChange = useCallback((event) => {
     const { name, value } = event.target;
-    setFilterData((prev) => ({ ...prev, [name]: value }));
-  };
 
-  const handleSearch = () => {
-    const targetAccountId =
-      filterData.panchayat || filterData.block || filterData.district || selectedAccountId;
+    if (name === "district") {
+      setSelectedDistrictId(value);
+      setFilterData(prev => ({ ...prev, district: value, block: "", panchayat: "" }));
+      setSelectedBlockId("");
+      if (value) {
+        fetchChildAccounts(value, "DIST");
+      }
+    } else if (name === "block") {
+      setSelectedBlockId(value);
+      setFilterData(prev => ({ ...prev, block: value, panchayat: "" }));
+      if (value) {
+        fetchChildAccounts(value, "BLK");
+      }
+    } else if (name === "panchayat") {
+      setFilterData(prev => ({ ...prev, panchayat: value }));
+    }
+  }, [fetchChildAccounts]);
+
+  const handleSearch = useCallback(() => {
+    const targetAccountId = filterData.panchayat ||
+      filterData.block ||
+      filterData.district ||
+      selectedAccountId;
     console.log("Searching for Account ID:", targetAccountId);
     fetchDashboardData(targetAccountId);
     fetchAlertsData(targetAccountId);
-  };
+  }, [filterData, selectedAccountId, fetchDashboardData, fetchAlertsData]);
 
   const handleReportClick = async (reportTitle) => {
     if (reportTitle === "General Report") {
@@ -185,8 +311,10 @@ function Dashboard() {
         startDate.setDate(startDate.getDate() - 30);
         const start = startDate.toISOString().slice(0, 19).replace("T", " ");
 
-        const accIdForReport =
-          filterData.panchayat || filterData.block || filterData.district || selectedAccountId;
+        const accIdForReport = filterData.panchayat ||
+          filterData.block ||
+          filterData.district ||
+          selectedAccountId;
 
         const reportData = await ApiService.getNonFunctionalReport(accIdForReport, start, end);
         setVtsData(reportData);
@@ -201,6 +329,19 @@ function Dashboard() {
   };
 
   const handleCloseAlertModal = () => setAlertModalOpen(false);
+
+  // Role-based visibility
+  const shouldShowDistrict = userRole === "ST" || !userRole;
+  const shouldShowBlock = userRole === "ST" || userRole === "DIST" || !userRole;
+
+  // Get current blocks and panchayats
+  const currentBlocks = useMemo(() => {
+    return selectedDistrictId ? (blocksByDistrict[selectedDistrictId] || []) : [];
+  }, [selectedDistrictId, blocksByDistrict]);
+
+  const currentPanchayats = useMemo(() => {
+    return selectedBlockId ? (panchayatsByBlock[selectedBlockId] || []) : [];
+  }, [selectedBlockId, panchayatsByBlock]);
 
   const filteredAlertData = useMemo(() => {
     if (!selectedAlertType) return alertApiData.data;
@@ -250,8 +391,8 @@ function Dashboard() {
                       alert.severity === "high"
                         ? "4px solid #f44336"
                         : alert.severity === "medium"
-                        ? "4px solid #ff9800"
-                        : "4px solid #4caf50",
+                          ? "4px solid #ff9800"
+                          : "4px solid #4caf50",
                   }}
                 >
                   <MDBox p={2}>
@@ -294,8 +435,8 @@ function Dashboard() {
                           alert.severity === "high"
                             ? "error"
                             : alert.severity === "medium"
-                            ? "warning"
-                            : "success"
+                              ? "warning"
+                              : "success"
                         }
                       >
                         {alert.severity ? alert.severity.toUpperCase() : "NORMAL"}
@@ -314,61 +455,64 @@ function Dashboard() {
           </MDBox>
         </Card>
 
-        {/* Updated Hierarchical Filters */}
+        {/* Hierarchical Filters */}
         <Card sx={{ mb: 4, p: 2 }}>
           <MDBox p={2}>
             <Grid container spacing={3} alignItems="flex-end">
-              <Grid item xs={12} md={3}>
-                <MDBox mb={1} ml={0.5}>
-                  <MDTypography variant="caption" fontWeight="bold">
-                    SELECT DISTRICT
-                  </MDTypography>
-                </MDBox>
-                <FormControl fullWidth variant="outlined" size="small">
-                  <Select
-                    name="district"
-                    value={filterData.district}
-                    onChange={handleFilterChange}
-                    displayEmpty
-                    disabled={userRole === "BLK" || userRole === "PNCH"}
-                  >
-                    <MenuItem value="" disabled>
-                      Select District
-                    </MenuItem>
-                    {dropdownData.districts.map((item) => (
-                      <MenuItem key={item.id} value={item.id}>
-                        {item.name}
+              {shouldShowDistrict && (
+                <Grid item xs={12} md={3}>
+                  <MDBox mb={1} ml={0.5}>
+                    <MDTypography variant="caption" fontWeight="bold">
+                      SELECT DISTRICT
+                    </MDTypography>
+                  </MDBox>
+                  <FormControl fullWidth variant="outlined" size="small">
+                    <Select
+                      name="district"
+                      value={filterData.district}
+                      onChange={handleFilterChange}
+                      displayEmpty
+                    >
+                      <MenuItem value="" disabled>
+                        Select District
                       </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
+                      {dropdownData.districts.map((item) => (
+                        <MenuItem key={item.id} value={item.id}>
+                          {item.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
 
-              <Grid item xs={12} md={3}>
-                <MDBox mb={1} ml={0.5}>
-                  <MDTypography variant="caption" fontWeight="bold">
-                    SELECT BLOCK
-                  </MDTypography>
-                </MDBox>
-                <FormControl fullWidth variant="outlined" size="small">
-                  <Select
-                    name="block"
-                    value={filterData.block}
-                    onChange={handleFilterChange}
-                    displayEmpty
-                    disabled={userRole === "PNCH"}
-                  >
-                    <MenuItem value="" disabled>
-                      Select Block
-                    </MenuItem>
-                    {dropdownData.blocks.map((item) => (
-                      <MenuItem key={item.id} value={item.id}>
-                        {item.name}
+              {shouldShowBlock && (
+                <Grid item xs={12} md={3}>
+                  <MDBox mb={1} ml={0.5}>
+                    <MDTypography variant="caption" fontWeight="bold">
+                      SELECT BLOCK
+                    </MDTypography>
+                  </MDBox>
+                  <FormControl fullWidth variant="outlined" size="small">
+                    <Select
+                      name="block"
+                      value={filterData.block}
+                      onChange={handleFilterChange}
+                      displayEmpty
+                      disabled={!selectedDistrictId && shouldShowDistrict}
+                    >
+                      <MenuItem value="" disabled>
+                        Select Block
                       </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
+                      {currentBlocks.map((item) => (
+                        <MenuItem key={item.id} value={item.id}>
+                          {item.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
 
               <Grid item xs={12} md={3}>
                 <MDBox mb={1} ml={0.5}>
@@ -382,11 +526,12 @@ function Dashboard() {
                     value={filterData.panchayat}
                     onChange={handleFilterChange}
                     displayEmpty
+                    disabled={!selectedBlockId && shouldShowBlock}
                   >
                     <MenuItem value="" disabled>
                       Select Panchayat
                     </MenuItem>
-                    {dropdownData.panchayats.map((item) => (
+                    {currentPanchayats.map((item) => (
                       <MenuItem key={item.id} value={item.id}>
                         {item.name}
                       </MenuItem>

@@ -127,7 +127,8 @@ export const exportPDF = (data, filename = "report.pdf") => {
         const pageHeight = doc.internal.pageSize.height;
         doc.setFontSize(9);
         doc.setTextColor(150);
-        const footer = `© 2025 ${process.env.REACT_APP_PROJECT_NAME || "Ausprey"}`;
+        const footer = `© 2025 ${process.env.REACT_APP_PROJECT_NAME || "IMZ"}`;
+        // const footer = `© 2025 ${process.env.REACT_APP_PROJECT_NAME || "Ausprey"}`;
         const textWidth = doc.getTextWidth(footer);
         doc.text(footer, (doc.internal.pageSize.width - textWidth) / 2, pageHeight - 10);
       },

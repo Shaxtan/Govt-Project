@@ -61,7 +61,8 @@ function Footer({ company, links }) {
         px={1.5}
       >
         {/* MODIFICATION START */}
-        &copy; 2025, Ausprey
+        {/* &copy; 2025, Ausprey */}
+        &copy; 2025, IMZ
         {/* MODIFICATION END */}
       </MDBox>
       <MDBox
@@ -90,9 +91,11 @@ function Footer({ company, links }) {
 // Setting default values for the props of Footer
 Footer.defaultProps = {
   // Updated company name for consistency, though it's not used in the final display
-  company: { href: "#", name: "Ausprey" },
+  // company: { href: "#", name: "Ausprey" },
+  company: { href: "#", name: "IMZ" },
   links: [
-    { href: "#", name: "Ausprey" },
+    { href: "#", name: "IMZ" },
+    // { href: "#", name: "Ausprey" },
     { href: "#", name: "About Us" },
     // { href: "#", name: "Blog" },
     { href: "#", name: "License" },

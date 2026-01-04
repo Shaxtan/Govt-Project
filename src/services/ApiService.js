@@ -361,6 +361,25 @@ class ApiService {
         throw error;
       });
   }
+  // Add this method to your ApiService class (after getAccountDropdown)
+  getChildAccountDropdown(parentId, callback) {
+    return this.getRequest(
+      // `/accounts/accountDropdown/${parentId}`,  // ← This hits /accounts/accountDropdown/{id}
+      `/accounts/accountDropdown/{id}?id=${parentId}`,  // ← This hits /accounts/accountDropdown/{id}
+      null,
+      true,
+      SERVICES.mainn  // accounts service
+    )
+      .then((res) => {
+        if (callback) callback(res);
+        return res;
+      })
+      .catch((error) => {
+        callAlert("Error", error?.message || "Failed to fetch child accounts");
+        throw error;
+      });
+  }
+
 }
 
 export { SERVICES };
