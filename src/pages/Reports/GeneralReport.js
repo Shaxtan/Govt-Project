@@ -159,6 +159,18 @@ function GeneralReport() {
   const currentBlocks = district ? blocksByDistrict[district] || [] : [];
   const currentPanchayats = block ? panchayatsByBlock[block] || [] : [];
 
+  const columns = {
+    district: { minWidth: 120 },
+    block: { minWidth: 120 },
+    panchayat: { minWidth: 150 },
+    ward: { minWidth: 140 },
+    startTime: { minWidth: 140, whiteSpace: "" },
+    endTime: { minWidth: 180, whiteSpace: "" },
+    qty: { minWidth: 120, textAlign: "right" },
+    duration: { minWidth: 120 },
+  };
+
+
   return (
     <DashboardLayout>
       <DashboardNavbar />
@@ -341,7 +353,7 @@ function GeneralReport() {
               Close
             </MDButton>
           </MDBox>
-          <TableContainer component={Paper} className="gr-table-container">
+          {/* <TableContainer component={Paper} className="gr-table-container">
             <Table stickyHeader className="gr-table">
               <TableHead>
                 <TableRow>
@@ -407,7 +419,91 @@ function GeneralReport() {
                 )}
               </TableBody>
             </Table>
+          </TableContainer> */}
+
+          <TableContainer component={Paper} className="gr-table-container">
+            <Table stickyHeader className="gr-table" sx={{ tableLayout: "fixed" }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell className="gr-th" sx={columns.district}>
+                    District
+                  </TableCell>
+                  <TableCell className="gr-th" sx={columns.block}>
+                    Block
+                  </TableCell>
+                  <TableCell className="gr-th" sx={columns.panchayat}>
+                    Panchayat
+                  </TableCell>
+                  <TableCell className="gr-th" sx={columns.ward}>
+                    Ward
+                  </TableCell>
+                  <TableCell className="gr-th" sx={columns.startTime}>
+                    Start Time
+                  </TableCell>
+                  <TableCell className="gr-th" sx={columns.endTime}>
+                    End Time
+                  </TableCell>
+                  <TableCell className="gr-th" sx={columns.qty}>
+                    Qty (Litres)
+                  </TableCell>
+                  <TableCell className="gr-th" sx={columns.duration}>
+                    Duration
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {reportData.length > 0 ? (
+                  reportData.map((row, index) => (
+                    <TableRow key={row.id || index}>
+                      <TableCell className="gr-td" sx={columns.district}>
+                        {row.meta?.district || "N/A"}
+                      </TableCell>
+                      <TableCell className="gr-td" sx={columns.block}>
+                        {row.meta?.block || "N/A"}
+                      </TableCell>
+                      <TableCell className="gr-td" sx={columns.panchayat}>
+                        {row.meta?.panchayat || "N/A"}
+                      </TableCell>
+                      <TableCell className="gr-td" sx={columns.ward}>
+                        {row.meta?.name || "N/A"}
+                      </TableCell>
+                      <TableCell className="gr-td" sx={columns.startTime}>
+                        {row.startTime?.date
+                          ? new Date(row.startTime.date).toLocaleString()
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell className="gr-td" sx={columns.endTime}>
+                        {row.endtime?.date
+                          ? new Date(row.endtime.date).toLocaleString()
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell className="gr-td" sx={columns.qty}>
+                        {row.description?.qty || "N/A"}
+                      </TableCell>
+                      <TableCell className="gr-td" sx={columns.duration}>
+                        {row.description?.duration
+                          ? (() => {
+                            const s = row.description.duration;
+                            const h = Math.floor(s / 3600);
+                            const m = Math.floor((s % 3600) / 60);
+                            return h === 0 ? `${m} min` : `${h} hr ${m} min`;
+                          })()
+                          : "N/A"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      No data found for the selected date range.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </TableContainer>
+
         </MDBox>
       </Modal>
     </DashboardLayout>
