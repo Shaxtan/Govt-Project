@@ -217,36 +217,42 @@ function Dashboard() {
   );
 
   const handleSearch = useCallback(() => {
+    // Logic: Use the most specific ID available, fallback to the logged-in user's ID
     const targetAccountId =
       filterData.panchayat || filterData.block || filterData.district || selectedAccountId;
+
+    console.log("Fetching data for ID:", targetAccountId);
+
     fetchDashboardData(targetAccountId);
     fetchAlertsData(targetAccountId);
   }, [filterData, selectedAccountId, fetchDashboardData, fetchAlertsData]);
 
   const handleReportClick = async (reportTitle) => {
+    // Determine the deepest selected ID
+    const activeId =
+      filterData.panchayat || filterData.block || filterData.district || selectedAccountId;
+
     if (reportTitle === "General Report") {
-      navigate("/reports/general-report");
+      // If navigating, pass the ID via state or search params
+      navigate(`/reports/general-report?accountId=${activeId}`);
     } else if (reportTitle === "Non-Functional Scheme Report") {
       handleOpenModal(reportTitle);
       setTableLoading(true);
+
       try {
         const end = new Date().toISOString().slice(0, 19).replace("T", " ");
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - 30);
         const start = startDate.toISOString().slice(0, 19).replace("T", " ");
 
-        const accIdForReport =
-          filterData.panchayat || filterData.block || filterData.district || selectedAccountId;
-
-        const reportData = await ApiService.getNonFunctionalReport(accIdForReport, start, end);
+        // API Call using the specific activeId
+        const reportData = await ApiService.getNonFunctionalReport(activeId, start, end);
         setVtsData(reportData);
       } catch (error) {
         console.error("Failed to load report", error);
       } finally {
         setTableLoading(false);
       }
-    } else if (reportTitle === "Review Report") {
-      handleOpenModal(reportTitle);
     }
   };
 
