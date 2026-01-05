@@ -254,7 +254,7 @@ function DashboardNavbar({
           /* Right Side: Container for Dropdown + Icons in one row */
           <MDBox sx={(theme) => navbarRow(theme, { isMini })} display="flex" alignItems="center">
             {/* 1. Account Dropdown Section */}
-            <MDBox display="flex" alignItems="center" gap={2} mr={2}>
+            {/* <MDBox display="flex" alignItems="center" gap={2} mr={2}>
               <MDTypography variant="h6" color="text" sx={{ whiteSpace: "nowrap" }}>
                 Select Account
               </MDTypography>
@@ -281,7 +281,7 @@ function DashboardNavbar({
                   )}
                 </Select>
               </FormControl>
-            </MDBox>
+            </MDBox> */}
 
             {/* 2. All Icons and Refresh in the SAME row */}
             <MDBox display="flex" alignItems="center" color={light ? "white" : "inherit"}>
