@@ -35,6 +35,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 
+// Note: getInitialAccountId and getUserType remain as fallbacks,
+// but we will now prioritize the ApiService.getMe() response.
 const getInitialAccountId = () => {
   try {
     const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
@@ -63,20 +65,16 @@ function Dashboard() {
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
   const [userRole, setUserRole] = useState(getUserType());
 
-  // Hierarchical dropdown states
   const [selectedDistrictId, setSelectedDistrictId] = useState("");
   const [selectedBlockId, setSelectedBlockId] = useState("");
   const [blocksByDistrict, setBlocksByDistrict] = useState({});
   const [panchayatsByBlock, setPanchayatsByBlock] = useState({});
-  
 
   const [dropdownData, setDropdownData] = useState({
     districts: [],
     blocks: [],
     panchayats: [],
     allAccounts: [],
-    blocksByDistrict: {},
-    panchayatsByBlock: {},
   });
 
   const [vtsData, setVtsData] = useState([]);
@@ -112,104 +110,21 @@ function Dashboard() {
     setSelectedReport(null);
   };
 
-  // const fetchChildAccounts = useCallback((parentId, parentType) => {
-  //   ApiService.getChildAccountDropdown(parentId, (res) => {
-  //     if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-  //       const childAccounts = res.data.data;
-
-  //       if (parentType === "DIST") {
-  //         setBlocksByDistrict(prev => ({
-  //           ...prev,
-  //           [parentId]: childAccounts.filter(item => item.type === "BLK")
-  //         }));
-  //         setDropdownData(prev => ({
-  //           ...prev,
-  //           blocksByDistrict: {
-  //             ...prev.blocksByDistrict,
-  //             [parentId]: childAccounts.filter(item => item.type === "BLK")
-  //           }
-  //         }));
-  //         setSelectedBlockId("");
-  //         setFilterData(prev => ({ ...prev, block: "", panchayat: "" }));
-  //       } else if (parentType === "BLK") {
-  //         setPanchayatsByBlock(prev => ({
-  //           ...prev,
-  //           [parentId]: childAccounts.filter(item => item.type === "PNCH")
-  //         }));
-  //         setDropdownData(prev => ({
-  //           ...prev,
-  //           panchayatsByBlock: {
-  //             ...prev.panchayatsByBlock,
-  //             [parentId]: childAccounts.filter(item => item.type === "PNCH")
-  //           }
-  //         }));
-  //         setFilterData(prev => ({ ...prev, panchayat: "" }));
-  //       }
-  //     }
-  //   });
-  // }, []);
-
-
-const fetchAccounts = useCallback(() => {
-  // ✅ FIXED: Only callback param
-  ApiService.getAccountDropdown((res) => {
-    if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-      const allAccounts = res.data.data;
-      const districts = allAccounts.filter((item) => item.type === "DIST");
-      
-      setDropdownData({
-        districts,
-        allAccounts,
-      });
-      setAccounts(allAccounts);
-    }
-  });
-}, []);
-
-const fetchChildAccounts = useCallback((parentId, parentType) => {
-  // ✅ FIXED: parentId + callback
-  ApiService.getChildAccountDropdown(parentId, (res) => {
-    if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-      const childAccounts = res.data.data;
-      
-      if (parentType === "DIST") {
-        const districtBlocks = childAccounts.filter(item => item.type === "BLK");
-        setBlocksByDistrict(prev => ({
-          ...prev,
-          [parentId]: districtBlocks
-        }));
-        setSelectedBlockId("");
-        setFilterData(prev => ({ ...prev, block: "", panchayat: "" }));
-      } else if (parentType === "BLK") {
-        const blockPanchayats = childAccounts.filter(item => item.type === "PNCH");
-        setPanchayatsByBlock(prev => ({
-          ...prev,
-          [parentId]: blockPanchayats
-        }));
-        setFilterData(prev => ({ ...prev, panchayat: "" }));
+  // ✅ NEW: Hierarchical fetcher using the updated API endpoint
+  const fetchChildren = useCallback((id, targetType) => {
+    ApiService.getHierarchicalDropdown(id, targetType, (res) => {
+      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+        const data = res.data.data;
+        if (targetType === "DIST") {
+          setDropdownData((prev) => ({ ...prev, districts: data }));
+        } else if (targetType === "BLK") {
+          setBlocksByDistrict((prev) => ({ ...prev, [id]: data }));
+        } else if (targetType === "PNCH") {
+          setPanchayatsByBlock((prev) => ({ ...prev, [id]: data }));
+        }
       }
-    }
-  });
-}, []);
-
-
-
-  // const fetchAccounts = useCallback(() => {
-  //   ApiService.getAccountDropdown(true, (res) => {
-  //     if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-  //       const allAccounts = res.data.data;
-  //       const districts = allAccounts.filter((item) => item.type === "DIST");
-
-  //       setDropdownData({
-  //         districts,
-  //         allAccounts,
-  //         blocksByDistrict: {},
-  //         panchayatsByBlock: {},
-  //       });
-  //       setAccounts(allAccounts);
-  //     }
-  //   });
-  // }, []);
+    });
+  }, []);
 
   const fetchDashboardData = useCallback((accountId, isManual = false) => {
     if (isManual) setIsRefreshing(true);
@@ -236,65 +151,74 @@ const fetchChildAccounts = useCallback((parentId, parentType) => {
     });
   }, []);
 
+  // ✅ UPDATED: Initialization logic using /accounts/me
   useEffect(() => {
-    fetchAccounts();
+    ApiService.getMe((res) => {
+      if (res?.data?.resultCode === 1 && res?.data?.data) {
+        const user = res.data.data;
+        setUserRole(user.type);
+        setSelectedAccountId(user.id);
 
-    // Auto-select based on user role
-    if (userRole === "DIST" || userRole === "BLK" || userRole === "PNCH") {
-      setFilterData(prev => ({ ...prev, district: selectedAccountId }));
-      setSelectedDistrictId(selectedAccountId);
+        // Initial cascading trigger based on user type
+        if (user.type === "ST") {
+          fetchChildren(user.id, "DIST");
+        } else if (user.type === "DIST") {
+          setSelectedDistrictId(user.id);
+          setFilterData((prev) => ({ ...prev, district: user.id }));
+          fetchChildren(user.id, "BLK");
+        } else if (user.type === "BLK") {
+          setSelectedBlockId(user.id);
+          setFilterData((prev) => ({ ...prev, block: user.id }));
+          fetchChildren(user.id, "PNCH");
+        }
 
-      if (userRole === "BLK") {
-        setFilterData(prev => ({ ...prev, block: selectedAccountId }));
-        setSelectedBlockId(selectedAccountId);
-        fetchChildAccounts(selectedAccountId, "BLK");
-      } else if (userRole === "PNCH") {
-        setFilterData(prev => ({ ...prev, panchayat: selectedAccountId }));
+        fetchDashboardData(user.id);
+        fetchAlertsData(user.id);
       }
-    }
-
-    fetchDashboardData(selectedAccountId);
-    fetchAlertsData(selectedAccountId);
+    });
 
     const intervalId = setInterval(() => {
-      fetchDashboardData(selectedAccountId);
-      fetchAlertsData(selectedAccountId);
+      // Re-fetch using the current selected account ID
+      const currentId = selectedAccountId;
+      fetchDashboardData(currentId);
+      fetchAlertsData(currentId);
     }, 5 * 60 * 1000);
 
     return () => clearInterval(intervalId);
-  }, [selectedAccountId, userRole, fetchDashboardData, fetchAlertsData, fetchChildAccounts]);
+  }, [fetchDashboardData, fetchAlertsData, fetchChildren]);
 
   const handleAccountChange = (event) => {
     setSelectedAccountId(event.target.value);
   };
 
-  const handleFilterChange = useCallback((event) => {
-    const { name, value } = event.target;
+  // ✅ UPDATED: Cascade logic in handleFilterChange
+  const handleFilterChange = useCallback(
+    (event) => {
+      const { name, value } = event.target;
 
-    if (name === "district") {
-      setSelectedDistrictId(value);
-      setFilterData(prev => ({ ...prev, district: value, block: "", panchayat: "" }));
-      setSelectedBlockId("");
-      if (value) {
-        fetchChildAccounts(value, "DIST");
+      if (name === "district") {
+        setSelectedDistrictId(value);
+        setFilterData((prev) => ({ ...prev, district: value, block: "", panchayat: "" }));
+        setSelectedBlockId("");
+        if (value) {
+          fetchChildren(value, "BLK");
+        }
+      } else if (name === "block") {
+        setSelectedBlockId(value);
+        setFilterData((prev) => ({ ...prev, block: value, panchayat: "" }));
+        if (value) {
+          fetchChildren(value, "PNCH");
+        }
+      } else if (name === "panchayat") {
+        setFilterData((prev) => ({ ...prev, panchayat: value }));
       }
-    } else if (name === "block") {
-      setSelectedBlockId(value);
-      setFilterData(prev => ({ ...prev, block: value, panchayat: "" }));
-      if (value) {
-        fetchChildAccounts(value, "BLK");
-      }
-    } else if (name === "panchayat") {
-      setFilterData(prev => ({ ...prev, panchayat: value }));
-    }
-  }, [fetchChildAccounts]);
+    },
+    [fetchChildren]
+  );
 
   const handleSearch = useCallback(() => {
-    const targetAccountId = filterData.panchayat ||
-      filterData.block ||
-      filterData.district ||
-      selectedAccountId;
-    console.log("Searching for Account ID:", targetAccountId);
+    const targetAccountId =
+      filterData.panchayat || filterData.block || filterData.district || selectedAccountId;
     fetchDashboardData(targetAccountId);
     fetchAlertsData(targetAccountId);
   }, [filterData, selectedAccountId, fetchDashboardData, fetchAlertsData]);
@@ -311,10 +235,8 @@ const fetchChildAccounts = useCallback((parentId, parentType) => {
         startDate.setDate(startDate.getDate() - 30);
         const start = startDate.toISOString().slice(0, 19).replace("T", " ");
 
-        const accIdForReport = filterData.panchayat ||
-          filterData.block ||
-          filterData.district ||
-          selectedAccountId;
+        const accIdForReport =
+          filterData.panchayat || filterData.block || filterData.district || selectedAccountId;
 
         const reportData = await ApiService.getNonFunctionalReport(accIdForReport, start, end);
         setVtsData(reportData);
@@ -334,13 +256,12 @@ const fetchChildAccounts = useCallback((parentId, parentType) => {
   const shouldShowDistrict = userRole === "ST" || !userRole;
   const shouldShowBlock = userRole === "ST" || userRole === "DIST" || !userRole;
 
-  // Get current blocks and panchayats
   const currentBlocks = useMemo(() => {
-    return selectedDistrictId ? (blocksByDistrict[selectedDistrictId] || []) : [];
+    return selectedDistrictId ? blocksByDistrict[selectedDistrictId] || [] : [];
   }, [selectedDistrictId, blocksByDistrict]);
 
   const currentPanchayats = useMemo(() => {
-    return selectedBlockId ? (panchayatsByBlock[selectedBlockId] || []) : [];
+    return selectedBlockId ? panchayatsByBlock[selectedBlockId] || [] : [];
   }, [selectedBlockId, panchayatsByBlock]);
 
   const filteredAlertData = useMemo(() => {
@@ -391,8 +312,8 @@ const fetchChildAccounts = useCallback((parentId, parentType) => {
                       alert.severity === "high"
                         ? "4px solid #f44336"
                         : alert.severity === "medium"
-                          ? "4px solid #ff9800"
-                          : "4px solid #4caf50",
+                        ? "4px solid #ff9800"
+                        : "4px solid #4caf50",
                   }}
                 >
                   <MDBox p={2}>
@@ -435,8 +356,8 @@ const fetchChildAccounts = useCallback((parentId, parentType) => {
                           alert.severity === "high"
                             ? "error"
                             : alert.severity === "medium"
-                              ? "warning"
-                              : "success"
+                            ? "warning"
+                            : "success"
                         }
                       >
                         {alert.severity ? alert.severity.toUpperCase() : "NORMAL"}

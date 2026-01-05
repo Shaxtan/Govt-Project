@@ -365,10 +365,10 @@ class ApiService {
   getChildAccountDropdown(parentId, callback) {
     return this.getRequest(
       // `/accounts/accountDropdown/${parentId}`,  // ← This hits /accounts/accountDropdown/{id}
-      `/accounts/accountDropdown/{id}?id=${parentId}`,  // ← This hits /accounts/accountDropdown/{id}
+      `/accounts/accountDropdown/{id}?id=${parentId}`, // ← This hits /accounts/accountDropdown/{id}
       null,
       true,
-      SERVICES.mainn  // accounts service
+      SERVICES.mainn // accounts service
     )
       .then((res) => {
         if (callback) callback(res);
@@ -379,7 +379,30 @@ class ApiService {
         throw error;
       });
   }
+  // Inside ApiService.js class
 
+  // 1. Identify logged-in account
+  getMe(callback) {
+    return this.getRequest("/accounts/me", null, true, SERVICES.mainn).then((res) => {
+      if (callback) callback(res);
+      return res;
+    });
+  }
+
+  // 2. New Hierarchical Dropdown API
+  // Matches: /accounts/accountDropdown/{id}/{type}?id=...&type=...
+  getHierarchicalDropdown(id, type, callback) {
+    const url = `/accounts/accountDropdown/${id}/${type}?id=${id}&type=${type}`;
+    return this.getRequest(url, null, true, SERVICES.mainn)
+      .then((res) => {
+        if (callback) callback(res);
+        return res;
+      })
+      .catch((error) => {
+        callAlert("Error", `Failed to fetch ${type} list`);
+        throw error;
+      });
+  }
 }
 
 export { SERVICES };
