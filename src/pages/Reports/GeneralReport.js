@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 
 // Components
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
@@ -65,57 +65,62 @@ function GeneralReport() {
   const [reportData, setReportData] = useState([]);
   const [mapMarkers, setMapMarkers] = useState([]);
 
-  // --- Dynamic Dropdown States ---
-  const [districts, setDistricts] = useState([]);
+  // --- Hierarchical Dropdown States ---
+  const [userRole, setUserRole] = useState("");
+  const [dropdownData, setDropdownData] = useState({ districts: [] });
   const [blocksByDistrict, setBlocksByDistrict] = useState({});
   const [panchayatsByBlock, setPanchayatsByBlock] = useState({});
 
-  // Get user info once for defaults
   const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
   const mainAccId = user?.accountId || user?.accid || 1;
 
-  // --- Dynamic Fetching Logic ---
-
-  const fetchDistricts = useCallback(() => {
-    ApiService.getAccountDropdown((res) => {
+  // --- Hierarchical Fetching Logic ---
+  const fetchChildren = useCallback((id, targetType) => {
+    ApiService.getHierarchicalDropdown(id, targetType, (res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-        setDistricts(res.data.data.filter((item) => item.type === "DIST"));
-      }
-    });
-  }, []);
-
-  const fetchChildAccounts = useCallback((parentId, parentType) => {
-    ApiService.getChildAccountDropdown(parentId, (res) => {
-      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-        const children = res.data.data;
-        if (parentType === "DIST") {
-          setBlocksByDistrict((prev) => ({
-            ...prev,
-            [parentId]: children.filter((i) => i.type === "BLK"),
-          }));
-        } else if (parentType === "BLK") {
-          setPanchayatsByBlock((prev) => ({
-            ...prev,
-            [parentId]: children.filter((i) => i.type === "PNCH"),
-          }));
+        const data = res.data.data;
+        if (targetType === "DIST") {
+          setDropdownData((prev) => ({ ...prev, districts: data }));
+        } else if (targetType === "BLK") {
+          setBlocksByDistrict((prev) => ({ ...prev, [id]: data }));
+        } else if (targetType === "PNCH") {
+          setPanchayatsByBlock((prev) => ({ ...prev, [id]: data }));
         }
       }
     });
   }, []);
 
-  const fetchMapData = async () => {
+  // Initialization: Get user details and set up initial dropdowns
+  useEffect(() => {
+    ApiService.getMe((res) => {
+      if (res?.data?.resultCode === 1 && res?.data?.data) {
+        const userData = res.data.data;
+        setUserRole(userData.type);
+
+        // Cascade logic based on logged in user type
+        if (userData.type === "ST") {
+          fetchChildren(userData.id, "DIST");
+        } else if (userData.type === "DIST") {
+          setDistrict(userData.id);
+          fetchChildren(userData.id, "BLK");
+        } else if (userData.type === "BLK") {
+          setBlock(userData.id);
+          fetchChildren(userData.id, "PNCH");
+        }
+      }
+    });
+  }, [fetchChildren]);
+
+  // Fetch Map Data Helper
+  const fetchMapData = async (targetId) => {
     try {
       await ApiService.getMapViewData(
         {},
         (res) => {
-          if (res?.data?.resultCode === 1) {
-            setMapMarkers(res.data.data || []);
-          } else {
-            setMapMarkers([]);
-          }
+          setMapMarkers(res?.data?.data || []);
         },
         true,
-        mainAccId
+        targetId
       );
     } catch (error) {
       console.error("Error fetching map data:", error);
@@ -124,9 +129,8 @@ function GeneralReport() {
   };
 
   useEffect(() => {
-    fetchDistricts();
-    fetchMapData();
-  }, [fetchDistricts, mainAccId]);
+    fetchMapData(mainAccId);
+  }, [mainAccId]);
 
   // --- Search Logic ---
   const handleSearch = async (e) => {
@@ -138,14 +142,18 @@ function GeneralReport() {
 
     setLoading(true);
     try {
-      // Logic: Use Panchayat ID if available, else Block, else District, else Login ID
+      // ✅ LOGIC: Latest selected dropdown ID takes priority
       const targetId = panchayat || block || district || mainAccId;
+
       const startTime = `${fromDate} 00:00:00`;
       const endTime = `${toDate} 23:59:59`;
 
       const reportResponse = await ApiService.getGeneralReport(targetId, startTime, endTime);
       setReportData(reportResponse || []);
-      await fetchMapData();
+
+      // Update map markers based on the selected region
+      await fetchMapData(targetId);
+
       setOpen(true);
     } catch (error) {
       console.error("Search failed:", error);
@@ -155,21 +163,30 @@ function GeneralReport() {
     }
   };
 
-  // Helper lists based on selection
-  const currentBlocks = district ? blocksByDistrict[district] || [] : [];
-  const currentPanchayats = block ? panchayatsByBlock[block] || [] : [];
+  // Helper lists using useMemo for performance
+  const currentBlocks = useMemo(
+    () => (district ? blocksByDistrict[district] || [] : []),
+    [district, blocksByDistrict]
+  );
+  const currentPanchayats = useMemo(
+    () => (block ? panchayatsByBlock[block] || [] : []),
+    [block, panchayatsByBlock]
+  );
+
+  // Role-based visibility
+  const shouldShowDistrict = userRole === "ST" || !userRole;
+  const shouldShowBlock = userRole === "ST" || userRole === "DIST" || !userRole;
 
   const columns = {
-    district: { minWidth: 120 },
-    block: { minWidth: 120 },
-    panchayat: { minWidth: 150 },
-    ward: { minWidth: 140 },
-    startTime: { minWidth: 140, whiteSpace: "" },
-    endTime: { minWidth: 180, whiteSpace: "" },
-    qty: { minWidth: 120, textAlign: "right" },
-    duration: { minWidth: 120 },
+    district: { width: 120 },
+    block: { width: 120 },
+    panchayat: { width: 150 },
+    ward: { width: 140 },
+    startTime: { width: 180 },
+    endTime: { width: 180 },
+    qty: { width: 100, textAlign: "right" },
+    duration: { width: 120 },
   };
-
 
   return (
     <DashboardLayout>
@@ -180,80 +197,84 @@ function GeneralReport() {
             <Card>
               <MDBox p={3}>
                 <form onSubmit={handleSearch}>
-                  <Grid container spacing={3}>
+                  <Grid container spacing={2} alignItems="flex-end">
                     {/* DISTRICT */}
-                    <Grid item xs={12} md={4}>
-                      <MDBox mb={1} ml={0.5}>
-                        <MDTypography variant="caption" fontWeight="bold">
-                          SELECT DISTRICT
-                        </MDTypography>
-                      </MDBox>
-                      <FormControl variant="outlined" fullWidth className="gr-input-root">
-                        <Select
-                          value={district}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setDistrict(val);
-                            setBlock("");
-                            setPanchayat("");
-                            if (val) fetchChildAccounts(val, "DIST");
-                          }}
-                          displayEmpty
-                        >
-                          <MenuItem value="" disabled>
-                            Select District
-                          </MenuItem>
-                          {districts.map((item) => (
-                            <MenuItem key={item.id} value={item.id}>
-                              {item.name}
+                    {shouldShowDistrict && (
+                      <Grid item xs={12} md={2.4}>
+                        <MDBox mb={1} ml={0.5}>
+                          <MDTypography variant="caption" fontWeight="bold">
+                            SELECT DISTRICT
+                          </MDTypography>
+                        </MDBox>
+                        <FormControl variant="outlined" fullWidth size="small">
+                          <Select
+                            value={district}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDistrict(val);
+                              setBlock("");
+                              setPanchayat("");
+                              if (val) fetchChildren(val, "BLK");
+                            }}
+                            displayEmpty
+                          >
+                            <MenuItem value="" disabled>
+                              Select District
                             </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
+                            {dropdownData.districts.map((item) => (
+                              <MenuItem key={item.id} value={item.id}>
+                                {item.name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    )}
 
                     {/* BLOCK */}
-                    <Grid item xs={12} md={4}>
-                      <MDBox mb={1} ml={0.5}>
-                        <MDTypography variant="caption" fontWeight="bold">
-                          SELECT BLOCK
-                        </MDTypography>
-                      </MDBox>
-                      <FormControl variant="outlined" fullWidth className="gr-input-root">
-                        <Select
-                          value={block}
-                          disabled={!district}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setBlock(val);
-                            setPanchayat("");
-                            if (val) fetchChildAccounts(val, "BLK");
-                          }}
-                          displayEmpty
-                        >
-                          <MenuItem value="" disabled>
-                            Select Block
-                          </MenuItem>
-                          {currentBlocks.map((item) => (
-                            <MenuItem key={item.id} value={item.id}>
-                              {item.name}
+                    {shouldShowBlock && (
+                      <Grid item xs={12} md={2.4}>
+                        <MDBox mb={1} ml={0.5}>
+                          <MDTypography variant="caption" fontWeight="bold">
+                            SELECT BLOCK
+                          </MDTypography>
+                        </MDBox>
+                        <FormControl variant="outlined" fullWidth size="small">
+                          <Select
+                            value={block}
+                            disabled={!district && shouldShowDistrict}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setBlock(val);
+                              setPanchayat("");
+                              if (val) fetchChildren(val, "PNCH");
+                            }}
+                            displayEmpty
+                          >
+                            <MenuItem value="" disabled>
+                              Select Block
                             </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
+                            {currentBlocks.map((item) => (
+                              <MenuItem key={item.id} value={item.id}>
+                                {item.name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    )}
 
                     {/* PANCHAYAT */}
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={2.4}>
                       <MDBox mb={1} ml={0.5}>
                         <MDTypography variant="caption" fontWeight="bold">
                           SELECT PANCHAYAT
                         </MDTypography>
                       </MDBox>
-                      <FormControl variant="outlined" fullWidth className="gr-input-root">
+                      <FormControl variant="outlined" fullWidth size="small">
                         <Select
                           value={panchayat}
-                          disabled={!block}
+                          disabled={!block && shouldShowBlock}
                           onChange={(e) => setPanchayat(e.target.value)}
                           displayEmpty
                         >
@@ -270,21 +291,23 @@ function GeneralReport() {
                     </Grid>
 
                     {/* DATES */}
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={1.6}>
                       <TextField
                         label="From Date"
                         type="date"
                         fullWidth
+                        size="small"
                         value={fromDate}
                         onChange={(e) => setFromDate(e.target.value)}
                         InputLabelProps={{ shrink: true }}
                       />
                     </Grid>
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={1.6}>
                       <TextField
                         label="To Date"
                         type="date"
                         fullWidth
+                        size="small"
                         value={toDate}
                         onChange={(e) => setToDate(e.target.value)}
                         InputLabelProps={{ shrink: true }}
@@ -292,7 +315,7 @@ function GeneralReport() {
                     </Grid>
 
                     {/* SEARCH BUTTON */}
-                    <Grid item xs={12} md={4} display="flex" alignItems="center">
+                    <Grid item xs={12} md={1.6}>
                       <MDButton
                         type="submit"
                         variant="gradient"
@@ -344,7 +367,7 @@ function GeneralReport() {
         </Grid>
       </MDBox>
 
-      {/* Result Modal - Content logic remains exactly the same as your provided code */}
+      {/* Result Modal */}
       <Modal open={open} onClose={() => setOpen(false)}>
         <MDBox className="gr-modal-box">
           <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -353,73 +376,6 @@ function GeneralReport() {
               Close
             </MDButton>
           </MDBox>
-          {/* <TableContainer component={Paper} className="gr-table-container">
-            <Table stickyHeader className="gr-table">
-              <TableHead>
-                <TableRow>
-                  <TableCell className="gr-th" sx={{ pr: 6 }}>
-                    District
-                  </TableCell>
-                  <TableCell className="gr-th" sx={{ pr: 8 }}>
-                    Block
-                  </TableCell>
-                  <TableCell className="gr-th" sx={{ pr: 14 }}>
-                    Panchayat
-                  </TableCell>
-                  <TableCell className="gr-th" sx={{ pr: 9 }}>
-                    Ward
-                  </TableCell>
-                  <TableCell className="gr-th" sx={{ pr: 6, whiteSpace: "nowrap" }}>
-                    Start Time
-                  </TableCell>
-                  <TableCell className="gr-th" sx={{ pr: 2, whiteSpace: "nowrap" }}>
-                    End Time
-                  </TableCell>
-                  <TableCell className="gr-th" sx={{ pr: 8 }}>
-                    Qty(Litres)
-                  </TableCell>
-                  <TableCell className="gr-th">Duration</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {reportData.length > 0 ? (
-                  reportData.map((row) => (
-                    <TableRow key={row.id || Math.random()}>
-                      <TableCell className="gr-td">{row.meta?.district || "N/A"}</TableCell>
-                      <TableCell className="gr-td">{row.meta?.block || "N/A"}</TableCell>
-                      <TableCell className="gr-td">{row.meta?.panchayat || "N/A"}</TableCell>
-                      <TableCell className="gr-td">{row.meta?.name || "N/A"}</TableCell>
-                      <TableCell className="gr-td">
-                        {row.startTime?.date
-                          ? new Date(row.startTime.date).toLocaleString()
-                          : "N/A"}
-                      </TableCell>
-                      <TableCell className="gr-td">
-                        {row.endtime?.date ? new Date(row.endtime.date).toLocaleString() : "N/A"}
-                      </TableCell>
-                      <TableCell className="gr-td">{row.description?.qty || "N/A"}</TableCell>
-                      <TableCell className="gr-td">
-                        {row.description?.duration
-                          ? (() => {
-                              const s = row.description.duration;
-                              const h = Math.floor(s / 3600);
-                              const m = Math.floor((s % 3600) / 60);
-                              return h === 0 ? `${m} min` : `${h} hr ${m} min`;
-                            })()
-                          : "N/A"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center">
-                      No data found for the selected date range.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer> */}
 
           <TableContainer component={Paper} className="gr-table-container">
             <Table stickyHeader className="gr-table" sx={{ tableLayout: "fixed" }}>
@@ -456,39 +412,29 @@ function GeneralReport() {
                 {reportData.length > 0 ? (
                   reportData.map((row, index) => (
                     <TableRow key={row.id || index}>
-                      <TableCell className="gr-td" sx={columns.district}>
-                        {row.meta?.district || "N/A"}
-                      </TableCell>
-                      <TableCell className="gr-td" sx={columns.block}>
-                        {row.meta?.block || "N/A"}
-                      </TableCell>
-                      <TableCell className="gr-td" sx={columns.panchayat}>
-                        {row.meta?.panchayat || "N/A"}
-                      </TableCell>
-                      <TableCell className="gr-td" sx={columns.ward}>
-                        {row.meta?.name || "N/A"}
-                      </TableCell>
-                      <TableCell className="gr-td" sx={columns.startTime}>
+                      <TableCell className="gr-td">{row.meta?.district || "N/A"}</TableCell>
+                      <TableCell className="gr-td">{row.meta?.block || "N/A"}</TableCell>
+                      <TableCell className="gr-td">{row.meta?.panchayat || "N/A"}</TableCell>
+                      <TableCell className="gr-td">{row.meta?.name || "N/A"}</TableCell>
+                      <TableCell className="gr-td">
                         {row.startTime?.date
                           ? new Date(row.startTime.date).toLocaleString()
                           : "N/A"}
                       </TableCell>
-                      <TableCell className="gr-td" sx={columns.endTime}>
-                        {row.endtime?.date
-                          ? new Date(row.endtime.date).toLocaleString()
-                          : "N/A"}
+                      <TableCell className="gr-td">
+                        {row.endtime?.date ? new Date(row.endtime.date).toLocaleString() : "N/A"}
                       </TableCell>
-                      <TableCell className="gr-td" sx={columns.qty}>
+                      <TableCell className="gr-td" sx={{ textAlign: "right" }}>
                         {row.description?.qty || "N/A"}
                       </TableCell>
-                      <TableCell className="gr-td" sx={columns.duration}>
+                      <TableCell className="gr-td">
                         {row.description?.duration
                           ? (() => {
-                            const s = row.description.duration;
-                            const h = Math.floor(s / 3600);
-                            const m = Math.floor((s % 3600) / 60);
-                            return h === 0 ? `${m} min` : `${h} hr ${m} min`;
-                          })()
+                              const s = row.description.duration;
+                              const h = Math.floor(s / 3600);
+                              const m = Math.floor((s % 3600) / 60);
+                              return h === 0 ? `${m} min` : `${h} hr ${m} min`;
+                            })()
                           : "N/A"}
                       </TableCell>
                     </TableRow>
@@ -503,7 +449,6 @@ function GeneralReport() {
               </TableBody>
             </Table>
           </TableContainer>
-
         </MDBox>
       </Modal>
     </DashboardLayout>
